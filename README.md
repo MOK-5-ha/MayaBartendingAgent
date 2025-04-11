@@ -1,18 +1,36 @@
 # MOK-5-ha
-About
+## About
 
 
-Running the web application:
+## Running the web application:
 
-Create the virtual environment while cd in directory/repo
-    - python3 -m venv .venv (OS-agnostic)
-Activate virtual environment
-    - source .venv/bin/activate (MacOS)
-    - .venv\Scripts\activate.bat (Windows | Command Prompt)
-    - venv\Scripts\Activate.ps1 (Windows | Powershell)
-Install requirements/dependencies/imports
-    - pip install -r requirements.txt (OS-agnostic)
-Running our Python Application
-    - python main.py
-Deactivating the Environment
-    - deactivate
+1. Create the virtual environment while cd in directory/repo
+(OS-agnostic)
+```terminal
+python3 -m venv .venv 
+```
+2. Activate virtual environment
+(MacOS)
+```terminal
+source .venv/bin/activate
+```
+(Windows | Command Prompt)
+```terminal
+.venv\Scripts\activate.bat
+```
+(Windows | Powershell)
+```terminal
+.venv\Scripts\Activate.ps1
+```
+3. Install requirements/dependencies/imports
+```terminal
+pip install -r requirements.txt (OS-agnostic)
+```
+4. Running our Python Application
+```terminal
+python main.py
+```
+5. Deactivating the Environment
+```terminal
+deactivate
+```
