@@ -1,61 +1,137 @@
 import gradio as gr
-from bartending_agent import BartendingAgent
 import logging
+from typing import List, Dict, Tuple
 
-# Configure logging (optional but recommended)
-logging.basicConfig(level=logging.INFO)
+# --- Configure logging FIRST ---
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# Initialize the Bartending Agent
+# --- Import functions from the refactored agent logic module ---
+# Ensure this module exists and contains the necessary functions
 try:
-    agent = BartendingAgent()
-    logger.info("Bartending Agent initialized successfully.")
-except EnvironmentError as e:
-    logger.error(f"EnvironmentError initializing agent: {e}")
-    # Exit or provide a dummy agent if API keys are missing
-    # For now, we'll re-raise to make the issue clear
-    raise 
-except RuntimeError as e:
-    logger.error(f"RuntimeError initializing agent: {e}")
-    # Handle other initialization errors (e.g., Gemini connection)
-    raise
+    # Assuming the refactored logic is in 'bartending_agent_logic.py'
+    from bartending_agent import (
+        process_order,
+        get_menu_text,
+        # No need to import reset_order if clearing state is handled here
+    )
+    # Initialization (like model loading, API key checks) should occur
+    # within bartending_agent_logic.py upon import.
+    logger.info("Successfully imported agent logic functions.")
+except ImportError as e:
+    logger.exception("Failed to import agent functions. Ensure 'bartending_agent.py' exists and is correctly structured.")
+    raise SystemExit(f"Import Error: {e}") from e
+except Exception as e:
+    # Catch potential errors during module-level initialization in the logic module
+    logger.exception(f"Error during agent module initialization: {e}")
+    raise SystemExit(f"Initialization Error: {e}") from e
 
-# Define the function that Gradio will call
-def handle_order(user_input, chat_history):
-    logger.info(f"Received user input: {user_input}")
-    
-    # Process the order using the agent
-    response_text = agent.process_order(user_input)
-    logger.info(f"Agent response text: {response_text}")
-    
-    # Optionally, generate voice response (if Cartesia API is configured and needed)
-    # voice_response = agent.get_voice_response(response_text) 
-    # logger.info(f"Agent voice response generated (placeholder): {voice_response}")
-    
-    # Update chat history
-    chat_history.append((user_input, response_text))
-    
-    # Return updated chat history and potentially the voice response
-    # For now, just returning text response updates
-    return "", chat_history # Return empty string to clear input box
+# --- Gradio Interface Callbacks (Using Session State) ---
 
-# Define the Gradio interface
-with gr.Blocks() as demo:
+def handle_gradio_input(
+    user_input: str,
+    session_history_state: List[Dict[str, str]],
+    session_order_state: List[Dict[str, float]]
+) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]], List[Dict[str, float]]]:
+    """
+    Gradio callback: Takes user input and session state, calls the agent logic,
+    and returns updated UI and session state.
+    """
+    logger.info(f"Gradio input: '{user_input}'")
+    logger.debug(f"Received session history state (len {len(session_history_state)}): {session_history_state}")
+    logger.debug(f"Received session order state (len {len(session_order_state)}): {session_order_state}")
+
+    # Call the imported, stateless processing function with the current session's state
+    # It's assumed process_order handles its own errors and returns valid states
+    response_text, updated_history, updated_order = process_order(
+        user_input,
+        session_history_state,
+        session_order_state
+    )
+
+    # Return values to update Gradio components:
+    # 1. Textbox value (clear it)
+    # 2. Chatbot display value (the updated history)
+    # 3. History state value (persist updated history for next turn)
+    # 4. Order state value (persist updated order for next turn)
+    return "", updated_history, updated_history, updated_order
+
+def clear_chat_state() -> Tuple[List, List, List]:
+    """Gradio callback: Clears UI and session state by returning initial values."""
+    logger.info("Clear button clicked - Resetting session state for this user.")
+    # Return empty lists for Chatbot display, history state, and order state
+    return [], [], []
+
+# --- Gradio UI Definition (with gr.State) ---
+
+# Use a theme for a nicer look
+theme = gr.themes.Soft()
+
+with gr.Blocks(theme=theme) as demo:
     gr.Markdown("# Bartending Agent")
-    gr.Markdown(agent.get_menu_text()) # Display the menu
+    gr.Markdown("Welcome! Your conversation is private. Ask me for a drink or check your order.")
 
-    chatbot = gr.Chatbot(label="Conversation", value=[]) # Initialize chatbot display
-    
-    msg = gr.Textbox(label="Your Order", placeholder="What can I get for you?")
-    
-    clear = gr.Button("Clear Conversation")
+    # --- Define Session State Variables ---
+    # These hold the history and order specific to each user's session
+    # Initialized empty for each new session automatically by Gradio
+    history_state = gr.State([]) # Holds [{'role': ..., 'content': ...}, ...]
+    order_state = gr.State([])   # Holds [{'name': ..., 'price': ...}, ...]
 
-    msg.submit(handle_order, [msg, chatbot], [msg, chatbot])
-    clear.click(lambda: (agent.reset_order(), []), None, [chatbot], queue=False)
+    with gr.Row():
+        with gr.Column(scale=2):
+            # Chatbot display - its value is the updated history from the callback
+            chatbot_display = gr.Chatbot(
+                [], # Initialize empty, value set by handle_gradio_input output
+                elem_id="chatbot",
+                label="Conversation",
+                bubble_full_width=False,
+                height=500,
+                type="messages" # Ensure type is set for dictionary format
+            )
+            msg_input = gr.Textbox(
+                label="Your Order / Message",
+                placeholder="What can I get for you? (e.g., 'I'd like a Margarita', 'Show my order')"
+            )
+            with gr.Row():
+                # Clear button resets the state for the current session
+                clear_btn = gr.Button("Clear Conversation")
+                # Submit button sends the message
+                submit_btn = gr.Button("Send", variant="primary")
 
-# Launch the Gradio interface
+        with gr.Column(scale=1):
+             gr.Markdown("### Menu")
+             # Display menu dynamically using the imported function
+             try:
+                 menu_display_text = get_menu_text()
+             except Exception as e:
+                 logger.error(f"Failed to get menu text: {e}")
+                 menu_display_text = "Error loading menu."
+             gr.Markdown(menu_display_text, elem_id="menu-display")
+
+    # --- Event Handlers ---
+    # Define inputs and outputs including the state variables for submission
+    submit_inputs = [msg_input, history_state, order_state]
+    # Output updates: Textbox, Chatbot Display, History State, Order State
+    submit_outputs = [msg_input, chatbot_display, history_state, order_state]
+
+    # Link Textbox submit (Enter key)
+    msg_input.submit(handle_gradio_input, submit_inputs, submit_outputs)
+
+    # Link Submit button click
+    submit_btn.click(handle_gradio_input, submit_inputs, submit_outputs)
+
+    # Link Clear button click
+    # Output updates: Chatbot Display, History State, Order State are reset
+    clear_outputs = [chatbot_display, history_state, order_state]
+    clear_btn.click(clear_chat_state, None, clear_outputs)
+
+# --- Launch the Gradio Interface ---
 if __name__ == "__main__":
-    logger.info("Launching Gradio interface...")
-    # Set share=True to create a public link (optional)
-    demo.launch(share=True) 
-    logger.info("Gradio interface launched.") 
+    logger.info("Launching Gradio interface locally...")
+    # For local development (VSCode):
+    # - debug=True enables auto-reloading on code changes and more verbose logs.
+    # - share=False keeps the app accessible only on your local machine/network.
+    # - You might want to specify server_name="0.0.0.0" to access from other devices
+    #   on your local network.
+    demo.launch(debug=True, share=False) # server_name="0.0.0.0"
+    logger.info("Gradio interface closed.") 
