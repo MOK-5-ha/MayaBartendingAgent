@@ -1,5 +1,5 @@
 import gradio as gr
-from api.bartending_agent import BartendingAgent
+from bartending_agent import BartendingAgent
 import logging
 
 # Configure logging (optional but recommended)
