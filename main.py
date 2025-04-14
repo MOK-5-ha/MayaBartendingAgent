@@ -1,6 +1,6 @@
 import gradio as gr
 import logging
-from typing import List, Dict, Tuple
+from typing import List, Dict, Tuple, Any
 
 # --- Configure logging FIRST ---
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -13,6 +13,7 @@ try:
     from bartending_agent import (
         process_order,
         get_menu_text,
+        get_voice_audio,
         # No need to import reset_order if clearing state is handled here
     )
     # Initialization (like model loading, API key checks) should occur
@@ -32,35 +33,41 @@ def handle_gradio_input(
     user_input: str,
     session_history_state: List[Dict[str, str]],
     session_order_state: List[Dict[str, float]]
-) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]], List[Dict[str, float]]]:
+) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]], List[Dict[str, float]], Any]:
     """
-    Gradio callback: Takes user input and session state, calls the agent logic,
-    and returns updated UI and session state.
+    Gradio callback: Takes input/state, calls logic & TTS, returns updates.
     """
     logger.info(f"Gradio input: '{user_input}'")
     logger.debug(f"Received session history state (len {len(session_history_state)}): {session_history_state}")
     logger.debug(f"Received session order state (len {len(session_order_state)}): {session_order_state}")
 
-    # Call the imported, stateless processing function with the current session's state
-    # It's assumed process_order handles its own errors and returns valid states
+    # Call text processing logic first
     response_text, updated_history, updated_order = process_order(
         user_input,
         session_history_state,
         session_order_state
     )
 
-    # Return values to update Gradio components:
-    # 1. Textbox value (clear it)
-    # 2. Chatbot display value (the updated history)
-    # 3. History state value (persist updated history for next turn)
-    # 4. Order state value (persist updated order for next turn)
-    return "", updated_history, updated_history, updated_order
+    # --- Get Voice Audio ---
+    audio_data = None # Default to None
+    # Check if there is a non-empty response text to synthesize
+    if response_text and response_text.strip():
+         audio_data = get_voice_audio(response_text) # Call the imported function
+         if audio_data is None:
+             logger.warning("Failed to get audio data from get_voice_audio.")
+             # Optional: Add indication to user? E.g., append "[Audio failed]" to response_text
+    else:
+        logger.info("No response text generated, skipping TTS.")
+    # --- End Get Voice Audio ---
 
-def clear_chat_state() -> Tuple[List, List, List]:
-    """Gradio callback: Clears UI and session state by returning initial values."""
-    logger.info("Clear button clicked - Resetting session state for this user.")
-    # Return empty lists for Chatbot display, history state, and order state
-    return [], [], []
+    # Return updates including audio data (which might be None)
+    return "", updated_history, updated_history, updated_order, audio_data
+
+def clear_chat_state() -> Tuple[List, List, List, None]:
+    """Clears UI/session state including audio."""
+    logger.info("Clear button clicked - Resetting session state.")
+    # Return empty lists for Chatbot/history/order, and None for the audio component
+    return [], [], [], None
 
 # --- Gradio UI Definition (with gr.State) ---
 
@@ -88,6 +95,16 @@ with gr.Blocks(theme=theme) as demo:
                 height=500,
                 type="messages" # Ensure type is set for dictionary format
             )
+            # --- Add Audio Component ---
+            agent_audio_output = gr.Audio(
+                label="Agent Voice",
+                autoplay=True,      # Play automatically when updated
+                streaming=False,    # Using non-streaming for v1
+                format="wav",       # Match the format from get_voice_audio
+                show_label=True,
+                interactive=False   # User cannot interact with it directly
+            )
+            # --- End Add Audio Component ---
             msg_input = gr.Textbox(
                 label="Your Order / Message",
                 placeholder="What can I get for you? (e.g., 'I'd like a Margarita', 'Show my order')"
@@ -109,10 +126,10 @@ with gr.Blocks(theme=theme) as demo:
              gr.Markdown(menu_display_text, elem_id="menu-display")
 
     # --- Event Handlers ---
-    # Define inputs and outputs including the state variables for submission
+    # Define inputs and outputs including the state variables AND the audio output
     submit_inputs = [msg_input, history_state, order_state]
-    # Output updates: Textbox, Chatbot Display, History State, Order State
-    submit_outputs = [msg_input, chatbot_display, history_state, order_state]
+    # Add agent_audio_output to the list of outputs updated by submission
+    submit_outputs = [msg_input, chatbot_display, history_state, order_state, agent_audio_output]
 
     # Link Textbox submit (Enter key)
     msg_input.submit(handle_gradio_input, submit_inputs, submit_outputs)
@@ -121,8 +138,8 @@ with gr.Blocks(theme=theme) as demo:
     submit_btn.click(handle_gradio_input, submit_inputs, submit_outputs)
 
     # Link Clear button click
-    # Output updates: Chatbot Display, History State, Order State are reset
-    clear_outputs = [chatbot_display, history_state, order_state]
+    # Add agent_audio_output to the list of outputs cleared
+    clear_outputs = [chatbot_display, history_state, order_state, agent_audio_output]
     clear_btn.click(clear_chat_state, None, clear_outputs)
 
 # --- Launch the Gradio Interface ---
