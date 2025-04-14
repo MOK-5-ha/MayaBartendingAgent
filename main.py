@@ -76,7 +76,7 @@ theme = gr.themes.Soft()
 
 with gr.Blocks(theme=theme) as demo:
     gr.Markdown("# Bartending Agent")
-    gr.Markdown("Welcome! Your conversation is private. Ask me for a drink or check your order.")
+    gr.Markdown("Welcome to MOK 5-ha! Ask me for a drink or check your order.")
 
     # --- Define Session State Variables ---
     # These hold the history and order specific to each user's session
@@ -86,13 +86,25 @@ with gr.Blocks(theme=theme) as demo:
 
     with gr.Row():
         with gr.Column(scale=2):
+            # --- Add Avatar Image Here ---
+            gr.Image(
+                value="assets/bartender_avatar_ai_studio.jpeg", # Use the provided path
+                label="Bartender Avatar", # Alt text, not usually visible
+                show_label=False,         # Hide the label "Bartender Avatar"
+                interactive=False,      # Image is static
+                height=700,             # Adjust height as desired
+                width=850,              # Adjust width as desired
+                # You might experiment with container=False if alignment looks odd
+                # container=False,
+                elem_classes=["avatar-image"] # Optional: Add CSS class for styling
+             )
             # Chatbot display - its value is the updated history from the callback
             chatbot_display = gr.Chatbot(
                 [], # Initialize empty, value set by handle_gradio_input output
                 elem_id="chatbot",
                 label="Conversation",
                 bubble_full_width=False,
-                height=500,
+                height=180,
                 type="messages" # Ensure type is set for dictionary format
             )
             # --- Add Audio Component ---
