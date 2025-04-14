@@ -55,6 +55,15 @@ try:
 except ImportError:
     print("Info: python-dotenv not found. Skipping .env file loading. Relying on system environment variables.")
 
+try:
+    from cartesia import Cartesia
+    from cartesia.tts import OutputFormat_Raw, TtsRequestIdSpecifier
+except ImportError:
+    print("Error: Cartesia library not found.")
+    print("Please ensure it's listed in requirements.txt and installed.")
+    # Decide if this should be fatal - probably yes if TTS is required
+    sys.exit(1)
+
 
 # --- Configuration ---
 logging.basicConfig(
@@ -65,9 +74,16 @@ logger = logging.getLogger(__name__)
 
 # Get API Key (Ensure this is set in your .env file or system environment)
 GOOGLE_API_KEY = os.getenv("GEMINI_API_KEY")
+CARTESIA_API_KEY = os.getenv("CARTESIA_API_KEY") # Load Cartesia key
+
 if not GOOGLE_API_KEY:
     logger.error("FATAL: GEMINI_API_KEY not found in environment variables or .env file.")
     raise EnvironmentError("GEMINI_API_KEY is required but not found.")
+
+if not CARTESIA_API_KEY:
+    logger.error("FATAL: CARTESIA_API_KEY not found in environment variables or .env file.")
+    # Decide if TTS is optional or required. Assuming required for now.
+    raise EnvironmentError("CARTESIA_API_KEY is required but not found.")
 
 # Configure Gemini Client and Model (Initialized ONCE at module load)
 try:
@@ -81,6 +97,23 @@ except Exception as e:
     raise RuntimeError(
         f"Failed to initialize Gemini model. Check API key and model name ('{MODEL_NAME}')."
     ) from e
+
+# Initialize Cartesia Client (ONCE at module load)
+try:
+    # Replace "your-chosen-voice-id" with an actual valid ID from Cartesia
+    CARTESIA_VOICE_ID = "6f84f4b8-58a2-430c-8c79-688dad597532" # Example placeholder ID - CHANGE THIS
+    if not CARTESIA_VOICE_ID or "your-chosen-voice-id" in CARTESIA_VOICE_ID:
+         logger.warning("CARTESIA_VOICE_ID is not set to a valid ID. Please edit bartending_agent.py.")
+         # Decide if this is fatal. Maybe proceed without voice for now?
+
+    cartesia_client = Cartesia(
+        api_key=os.getenv("CARTESIA_API_KEY"),
+        )
+    logger.info("Successfully initialized Cartesia client.")
+    # Optional: Could add a check here to verify the voice ID exists using the client if possible
+except Exception as e:
+     logger.exception("Fatal: Failed to initialize Cartesia client.")
+     raise RuntimeError("Cartesia client initialization failed.") from e
 
 
 # --- Static Data ---
@@ -266,3 +299,69 @@ def process_order(
 # Note: No reset_order function is needed as state is reset in main.py callbacks.
 # Note: No get_voice_response function included as it wasn't part of the stateless refactoring focus.
 #       If needed, it would require passing the cartesia_api_key or client. 
+
+# --- New TTS Function ---
+
+# Define retryable exceptions for Cartesia if known, otherwise use generic ones
+# Example: CARTESIA_RETRYABLE_EXCEPTIONS = (cartesia.errors.ServerError, cartesia.errors.RateLimitError, ConnectionError)
+# Using generic exceptions for now as specific Cartesia ones aren't known here.
+CARTESIA_RETRYABLE_EXCEPTIONS = (ConnectionError, TimeoutError) # Add more specific Cartesia errors if documented
+
+@tenacity_retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=1, max=5),
+    retry=retry_if_exception_type(CARTESIA_RETRYABLE_EXCEPTIONS),
+    before_sleep=before_sleep_log(logger, logging.WARNING) if callable(before_sleep_log) else None,
+    reraise=True
+)
+def get_voice_audio(text_to_speak: str) -> bytes | None:
+    """Calls Cartesia API synchronously to synthesize speech and returns WAV bytes."""
+    global cartesia_client, CARTESIA_VOICE_ID # Access the global client and voice ID
+
+    if not text_to_speak or not text_to_speak.strip():
+        logger.warning("get_voice_audio received empty text.")
+        return None
+    if not cartesia_client or not CARTESIA_VOICE_ID:
+         logger.error("Cartesia client or voice ID not initialized, cannot generate audio.")
+         return None
+
+    try:
+        logger.info(f"Requesting TTS from Cartesia (Voice ID: {CARTESIA_VOICE_ID}) for: '{text_to_speak[:50]}...'")
+
+        # --- Check Cartesia Documentation for the exact method call ---
+        # This is a plausible synchronous implementation pattern:
+        audio_generator = cartesia_client.tts.bytes(
+            model_id="sonic-2",
+            transcript=text_to_speak,
+            voice={"mode":"id",
+                   "id": CARTESIA_VOICE_ID,
+            },
+            language="en",
+            # Specify desired output format and sample rate
+            output_format={"container":"wav",
+                           "sample_rate": 24000,
+                           "encoding": "pcm_f32le",
+            },
+        )
+
+        # Concatenate chunks from the generator for a blocking result
+        audio_data = b"".join(chunk for chunk in audio_generator)
+        # --- End of section requiring Cartesia documentation check ---
+
+        if not audio_data:
+            logger.warning("Cartesia TTS returned empty audio data.")
+            return None
+
+        logger.info(f"Received {len(audio_data)} bytes of WAV audio data from Cartesia.")
+        return audio_data
+
+    # Catch specific Cartesia errors if they exist and are imported
+    # except cartesia.errors.CartesiaError as e:
+    #    logger.exception(f"Cartesia API error during TTS generation: {e}")
+    #    return None
+    except Exception as e:
+        # Catch any other unexpected error during TTS
+        logger.exception(f"Unexpected error generating voice audio with Cartesia: {e}")
+        return None
+
+# --- End of bartending_agent.py --- 
