@@ -71,90 +71,67 @@ def clear_chat_state() -> Tuple[List, List, List, None]:
 
 # --- Gradio UI Definition (with gr.State) ---
 
-# Use a theme for a nicer look
 theme = gr.themes.Soft()
 
 with gr.Blocks(theme=theme) as demo:
     gr.Markdown("# Bartending Agent")
-    gr.Markdown("Welcome to MOK 5-ha! Ask me for a drink or check your order.")
+    gr.Markdown("Welcome! Your conversation is private. Ask me for a drink or check your order.")
 
     # --- Define Session State Variables ---
-    # These hold the history and order specific to each user's session
-    # Initialized empty for each new session automatically by Gradio
-    history_state = gr.State([]) # Holds [{'role': ..., 'content': ...}, ...]
-    order_state = gr.State([])   # Holds [{'name': ..., 'price': ...}, ...]
+    history_state = gr.State([])
+    order_state = gr.State([])
 
+    # --- Restructured Main Row with 2 Columns (Equal Scaling) ---
     with gr.Row():
-        with gr.Column(scale=2):
-            # --- Add Avatar Image Here ---
+
+        # --- Column 1: Avatar Image ---
+        # Scale is relative to other columns in the same row
+        with gr.Column(scale=1, min_width=200): # Keep scale=1
             gr.Image(
-                value="assets/bartender_avatar_ai_studio.jpeg", # Use the provided path
-                label="Bartender Avatar", # Alt text, not usually visible
-                show_label=False,         # Hide the label "Bartender Avatar"
-                interactive=False,      # Image is static
-                height=700,             # Adjust height as desired
-                width=850,              # Adjust width as desired
-                # You might experiment with container=False if alignment looks odd
-                # container=False,
-                elem_classes=["avatar-image"] # Optional: Add CSS class for styling
-             )
-            # Chatbot display - its value is the updated history from the callback
+                value="assets/bartender_avatar_ai_studio.jpeg",
+                label="Bartender Avatar",
+                show_label=False,
+                interactive=False,
+                height=600, # Adjust as desired
+                elem_classes=["avatar-image"]
+            )
+
+        # --- Column 2: Chat Interface ---
+        with gr.Column(scale=1): # <-- Changed scale from 3 to 1
             chatbot_display = gr.Chatbot(
-                [], # Initialize empty, value set by handle_gradio_input output
+                [],
                 elem_id="chatbot",
                 label="Conversation",
                 bubble_full_width=False,
-                height=180,
-                type="messages" # Ensure type is set for dictionary format
+                height=450, # Keep or adjust height for rectangular shape
+                type="messages"
             )
-            # --- Add Audio Component ---
             agent_audio_output = gr.Audio(
                 label="Agent Voice",
-                autoplay=True,      # Play automatically when updated
-                streaming=False,    # Using non-streaming for v1
-                format="wav",       # Match the format from get_voice_audio
+                autoplay=True,
+                streaming=False,
+                format="wav",
                 show_label=True,
-                interactive=False   # User cannot interact with it directly
+                interactive=False
             )
-            # --- End Add Audio Component ---
             msg_input = gr.Textbox(
                 label="Your Order / Message",
                 placeholder="What can I get for you? (e.g., 'I'd like a Margarita', 'Show my order')"
             )
             with gr.Row():
-                # Clear button resets the state for the current session
                 clear_btn = gr.Button("Clear Conversation")
-                # Submit button sends the message
                 submit_btn = gr.Button("Send", variant="primary")
 
-        with gr.Column(scale=1):
-             gr.Markdown("### Menu")
-             # Display menu dynamically using the imported function
-             try:
-                 menu_display_text = get_menu_text()
-             except Exception as e:
-                 logger.error(f"Failed to get menu text: {e}")
-                 menu_display_text = "Error loading menu."
-             gr.Markdown(menu_display_text, elem_id="menu-display")
-
-    # --- Event Handlers ---
-    # Define inputs and outputs including the state variables AND the audio output
+    # --- Event Handlers (Remain the same) ---
     submit_inputs = [msg_input, history_state, order_state]
-    # Add agent_audio_output to the list of outputs updated by submission
     submit_outputs = [msg_input, chatbot_display, history_state, order_state, agent_audio_output]
-
-    # Link Textbox submit (Enter key)
     msg_input.submit(handle_gradio_input, submit_inputs, submit_outputs)
-
-    # Link Submit button click
     submit_btn.click(handle_gradio_input, submit_inputs, submit_outputs)
 
-    # Link Clear button click
-    # Add agent_audio_output to the list of outputs cleared
     clear_outputs = [chatbot_display, history_state, order_state, agent_audio_output]
     clear_btn.click(clear_chat_state, None, clear_outputs)
 
-# --- Launch the Gradio Interface ---
+# --- Launch the Gradio Interface (Remains the same) ---
 if __name__ == "__main__":
     logger.info("Launching Gradio interface locally...")
     # For local development (VSCode):
