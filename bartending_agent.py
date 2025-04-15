@@ -3,6 +3,7 @@ import logging
 import os
 import sys
 from typing import Dict, List, Optional, Tuple
+import re  # Add import for regex
 
 # Gemini - Frontier LLM
 try:
@@ -192,6 +193,8 @@ def process_order(
             "Be conversational. Ask clarifying questions if the order is unclear.",
             "If the user asks for something not on the menu, politely tell them and show the menu again.",
             "If the user asks to see their current order, list the items and their prices.",
+            "The bar's name is MOK 5-ha, pronounced as 'Moksha'. If a customer asks about the name, explain that:",
+            "Moksha represents liberation from the cycle of rebirth (samsara) and union with the divine. It is achieved through spiritual enlightenment, freeing the soul from karma and earthly attachments to attain eternal bliss.",
             "\nHere is the menu:",
             get_menu_text(), # Call the stateless menu function
             "\nCurrent order:",
@@ -326,13 +329,18 @@ def get_voice_audio(text_to_speak: str) -> bytes | None:
          return None
 
     try:
-        logger.info(f"Requesting TTS from Cartesia (Voice ID: {CARTESIA_VOICE_ID}) for: '{text_to_speak[:50]}...'")
+        # Replace "MOK 5-ha" with "Moksha" for pronunciation in TTS
+        text_for_tts = re.sub(r'MOK 5-ha', 'Moksha', text_to_speak, flags=re.IGNORECASE)
+        if text_for_tts != text_to_speak:
+            logger.info("Applied 'MOK 5-ha' → 'Moksha' pronunciation for TTS.")
+            
+        logger.info(f"Requesting TTS from Cartesia (Voice ID: {CARTESIA_VOICE_ID}) for: '{text_for_tts[:50]}...'")
 
         # --- Check Cartesia Documentation for the exact method call ---
         # This is a plausible synchronous implementation pattern:
         audio_generator = cartesia_client.tts.bytes(
             model_id="sonic-2",
-            transcript=text_to_speak,
+            transcript=text_for_tts,  # Use the modified text with correct pronunciation
             voice={"mode":"id",
                    "id": CARTESIA_VOICE_ID,
             },

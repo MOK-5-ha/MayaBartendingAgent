@@ -71,11 +71,11 @@ def clear_chat_state() -> Tuple[List, List, List, None]:
 
 # --- Gradio UI Definition (with gr.State) ---
 
-theme = gr.themes.Soft()
+theme = gr.themes.Citrus()
 
 with gr.Blocks(theme=theme) as demo:
     gr.Markdown("# Bartending Agent")
-    gr.Markdown("Welcome! Your conversation is private. Ask me for a drink or check your order.")
+    gr.Markdown("Welcome to MOK 5-ha! Ask me for a drink or check your order.")
 
     # --- Define Session State Variables ---
     history_state = gr.State([])
