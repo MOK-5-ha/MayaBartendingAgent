@@ -12,106 +12,100 @@
 #     name: python3
 # ---
 
-# %% [markdown] id="4_YbnUYjFvOq"
-# # MOK 5-ha Bartending Agent
-# # Google Colab Notebook
+# %% [markdown]
+# # Gen AI Intensive Course Capstone 2025Q1: Bartending Agent 🍸🍺
+
+# %% [markdown]
+# ## Use Case: 🥂
+#
+# Proof-of-Concept for an agentic AI that can take customer orders, make recommendations, and engage with customers with potentially meaningful conversations, all while maintaining a friendly and professional demeanor.
+
+# %% [markdown]
+# ## How it Works: 🫗
+#
+# Users place orders through the Gradio UI, which the agent processes. The agent then engages in small talk and, after several exchanges, asks if the user wants another drink. When finished, the agent tallies the tab and thanks the user for their visit.
+
+# %% [markdown]
+# ## Capabilities Used: 🦾
+#
+# - **Function Calling**:
+# The agent uses LangChain and Gemini API function calling to process user orders and interact with tools (e.g., menu retrieval, order management).
+#
+# - **Agent**:
+# The notebook implements an agentic workflow, where the AI acts as a bartender, managing conversation, state, and tool invocation.
+#
+# - **Retrieval Augmented Generation (RAG)**:
+# The code includes logic for augmenting responses with external information (e.g., menu, order state).
+#
+# - **Vector search/vector store/vector database**:
+# Via chromadb, vector search/storage is supported for use in RAG.
+#
 
 # %% [markdown] id="0TCdSlfrF8Xx"
-# # Setup and Installation
+# # Setup and Installation 💾
+
+# %% [markdown]
+# ## Installing required packages
 
 # %% id="Fx_QR3iBF_8h"
-# Install required packages
-# !pip install google-generativeai>=0.3.0 tenacity>=8.2.3 gradio>=4.0.0 cartesia>=2.0.0 python-dotenv>=1.0.0 langchain-google-genai langchain-core
+# !pip install "google-generativeai>=0.3.0" "tenacity>=8.2.3" "gradio>=4.0.0" "cartesia>=2.0.0" "python-dotenv>=1.0.0" langchain-google-genai langchain-core
+
+# %% [markdown]
+# ## Importing Libraries 📚
 
 # %% id="SqKzi04BGEKW"
-# Import common libraries
+# Common libraries
 import os
 import logging
 import sys
-import re
-from typing import Dict, List, Optional, Tuple
-import gradio as gr
-from google.colab import files
-from google.colab import userdata
-import matplotlib.pyplot as plt
+import re # For parsing the menu
 import io
-from PIL import Image
 import base64
 import requests
+import json # For parsing tool arguments if needed
+from typing import Dict, List, Optional, Tuple, Any
+
+# Agent UI
+import gradio as gr
+from gradio.themes.utils import colors, fonts, sizes
+
+# Visualizations
+import matplotlib.pyplot as plt
+from PIL import Image
+
+# Generative AI / Agent packages
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
 from langchain_core.tools import tool
-import json # For parsing tool arguments if needed
-import re # For parsing the menu
+
+# %% [markdown]
+# ## Set up logging
 
 # %% id="VkTkJ89iGKTd"
-# Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-# %% [markdown] id="6Zy4nW66GYtn"
-# # Upload Bartender Avatar (Optional)
-
-# %% colab={"base_uri": "https://localhost:8080/", "height": 463} id="MrDvGWnNKhwl" outputId="3308d4d4-e2d1-485b-db5b-e8a2259f91cb"
-use_default_avatar = True
-
-# Default avatar URL
-default_avatar_url = "https://github.com/gen-ai-capstone-project-bartender-agent/MOK-5-ha/blob/main/assets/bartender_avatar_ai_studio.jpeg?raw=true"
-
-if use_default_avatar:
-    # Download default avatar
-    try:
-        response = requests.get(default_avatar_url)
-        if response.status_code == 200:
-            avatar_bytes = response.content
-            avatar_image = Image.open(io.BytesIO(avatar_bytes))
-            print("Using default avatar image")
-        else:
-            print(f"Failed to download default avatar. Status code: {response.status_code}")
-            # Create a blank avatar as fallback
-            avatar_image = Image.new('RGB', (300, 300), color = (73, 109, 137))
-    except Exception as e:
-        print(f"Error using default avatar: {e}")
-        # Create a blank avatar as fallback
-        avatar_image = Image.new('RGB', (300, 300), color = (73, 109, 137))
-else:
-    # Ask user to upload an avatar
-    print("Please upload an avatar image:")
-    uploaded = files.upload()
-    if uploaded:
-        avatar_key = next(iter(uploaded))
-        avatar_bytes = uploaded[avatar_key]
-        avatar_image = Image.open(io.BytesIO(avatar_bytes))
-        print(f"Uploaded avatar: {avatar_key}")
-    else:
-        print("No avatar uploaded, using default")
-        # Create a blank avatar as fallback
-        avatar_image = Image.new('RGB', (300, 300), color = (73, 109, 137))
-
-# Display the avatar
-plt.imshow(avatar_image)
-plt.axis('off')
-plt.title("Bartender Avatar")
-plt.show()
-
-# Save avatar for use in Gradio
-avatar_path = "bartender_avatar.jpg"
-avatar_image.save(avatar_path)
-print(f"Avatar saved to {avatar_path}")
+# %% [markdown]
+# # API Key Setup (WIP) 🔐
+#
+# Blank for now. Fill in later when on Kaggle.
+#
+# Include section on how to setup Cartesia API key and what it's for.
 
 # %% [markdown] id="QyccDKQIGxxT"
-# # Bartending Agent Implementation
+# # Bartending Agent Implementation 🤖
 
-# %% id="7Cf0cOPDG1jL"
+# %% id="genai_version_cell"
 try:
-    # Using 'ggenai' alias consistent with user's snippets
-    import google.generativeai as ggenai
+    import google.generativeai as genai
     from google.api_core import retry as core_retry # For potential core retries
     from google.generativeai import types as genai_types # For specific types if needed later
 except ImportError:
     print("Error: google.generativeai library not found.")
     print("Please install it using: pip install google-generativeai")
     sys.exit(1)
+
+print("genai version:",genai.__version__)
 
 # Tenacity for retries on specific functions
 try:
@@ -144,13 +138,15 @@ except ImportError:
 # %% id="FB4uGl8iHjnm"
 # --- Configuration ---
 
-# Get API Key (Ensure this is set in your .env file or system environment)
-GOOGLE_API_KEY = userdata.get("GOOGLE_API_KEY")
-CARTESIA_API_KEY = userdata.get("CARTESIA_API_KEY") # Load Cartesia key
+# Load Gemini API key from .env file
+from dotenv import load_dotenv
+load_dotenv()
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    raise ValueError("GEMINI_API_KEY not found in environment variables. Please set it in your .env file.")
 
-if not GOOGLE_API_KEY:
-    logger.error("FATAL: GEMINI_API_KEY not found in environment variables or .env file.")
-    raise EnvironmentError("GEMINI_API_KEY is required but not found.")
+# Get Cartesia API Key (Ensure this is set in your .env file or system environment)
+CARTESIA_API_KEY = os.getenv("CARTESIA_API_KEY") # Load Cartesia key
 
 if not CARTESIA_API_KEY:
     logger.error("FATAL: CARTESIA_API_KEY not found in environment variables or .env file.")
@@ -167,7 +163,7 @@ try:
          # Decide if this is fatal. Maybe proceed without voice for now?
 
     cartesia_client = Cartesia(
-        api_key=userdata.get("CARTESIA_API_KEY"),
+        api_key=CARTESIA_API_KEY,
         )
     logger.info("Successfully initialized Cartesia client.")
     # Optional: Could add a check here to verify the voice ID exists using the client if possible
@@ -227,7 +223,7 @@ def get_menu() -> str:
     before_sleep=before_sleep_log(logger, logging.WARNING) if callable(before_sleep_log) else None, # Check if callable
     reraise=True # Re-raise the exception if all retries fail
 )
-def _call_gemini_api(prompt_content: List[Dict], config: Dict) -> ggenai.types.GenerateContentResponse: # Adjusted input type hint
+def _call_gemini_api(prompt_content: List[Dict], config: Dict) -> genai.types.GenerateContentResponse: # Adjusted input type hint
     """Internal function to call the Gemini API with retry logic (Stateless)."""
     logger.debug("Calling Gemini API...")
     # Uses the globally initialized 'model'
@@ -376,9 +372,9 @@ tools = [get_menu, add_to_order, clear_order, get_order, confirm_order, place_or
 
 # With the LangChain setup:
 try:
-    # Ensure GOOGLE_API_KEY is set (e.g., from Colab Secrets or input)
-    if not GOOGLE_API_KEY:
-        raise ValueError("GOOGLE_API_KEY not found.")
+    # Ensure GEMINI_API_KEY is set (e.g., from .env file or input)
+    if not GEMINI_API_KEY:
+        raise ValueError("GEMINI_API_KEY not found.")
 
     # Use ChatGoogleGenerativeAI and bind the tools
     # Note: Use a model that supports tool calling well, like gemini-pro or newer flash/pro models
@@ -386,7 +382,7 @@ try:
         model="gemini-2.0-flash", # Or "gemini-pro", etc. Check model compatibility
         temperature=0.7,
         max_output_tokens=2048,
-        google_api_key=GOOGLE_API_KEY
+        google_api_key=GEMINI_API_KEY
     ).bind_tools(tools) # Bind the list of tool functions
 
     logger.info(f"Successfully initialized LangChain ChatGoogleGenerativeAI model bound with tools.")
@@ -624,10 +620,8 @@ def get_voice_audio(text_to_speak: str) -> bytes | None:
 # %% [markdown] id="5rsFNoUSIYjc"
 # # Gradio Interface Implementation
 
-# %% id="UYT5yCeG1iBT" outputId="c7387870-329d-4c76-dab3-793978de5a35" colab={"base_uri": "https://localhost:8080/"}
+# %% id="UYT5yCeG1iBT" outputId="c7387870-329d-4c76-dab3-793978de5a35"
 # Creating our own custom synthwave '84 inspired theme
-import gradio as gr
-from gradio.themes.utils import colors, fonts, sizes
 
 # Synthwave '84 Inspired Theme Definition
 # Color Palette
@@ -693,9 +687,58 @@ synthwave_theme = gr.themes.Default(
 
 print("Synthwave '84 inspired Gradio theme created (forcing dark block/input backgrounds).")
 
-# %% id="KgbB7vlLIdiG"
-from typing import Any
+# %% [markdown]
+# ## Upload or Generate Bartender Avatar
 
+# %%
+use_default_avatar = True
+
+# Default avatar URL
+default_avatar_url = "https://github.com/gen-ai-capstone-project-bartender-agent/MOK-5-ha/blob/main/assets/bartender_avatar_ai_studio.jpeg?raw=true"
+
+if use_default_avatar:
+    # Download default avatar
+    try:
+        response = requests.get(default_avatar_url)
+        if response.status_code == 200:
+            avatar_bytes = response.content
+            avatar_image = Image.open(io.BytesIO(avatar_bytes))
+            print("Using default avatar image")
+        else:
+            print(f"Failed to download default avatar. Status code: {response.status_code}")
+            # Create a blank avatar as fallback
+            avatar_image = Image.new('RGB', (300, 300), color = (73, 109, 137))
+    except Exception as e:
+        print(f"Error using default avatar: {e}")
+        # Create a blank avatar as fallback
+        avatar_image = Image.new('RGB', (300, 300), color = (73, 109, 137))
+else:
+    # Ask user to upload an avatar
+    print("Please upload an avatar image:")
+    # uploaded = files.upload()
+    # if uploaded:
+    #     avatar_key = next(iter(uploaded))
+    #     avatar_bytes = uploaded[avatar_key]
+    #     avatar_image = Image.open(io.BytesIO(avatar_bytes))
+    #     print(f"Uploaded avatar: {avatar_key}")
+    # else:
+    print("No avatar uploaded, using default")
+    # Create a blank avatar as fallback
+    avatar_image = Image.new('RGB', (300, 300), color = (73, 109, 137))
+
+# Display the avatar
+plt.imshow(avatar_image)
+plt.axis('off')
+plt.title("Bartender Avatar")
+plt.show()
+
+# Save avatar for use in Gradio
+avatar_path = "bartender_avatar.jpg"
+avatar_image.save(avatar_path)
+print(f"Avatar saved to {avatar_path}")
+
+
+# %% id="KgbB7vlLIdiG"
 def handle_gradio_input(
     user_input: str,
     session_history_state: List[Dict[str, str]],
@@ -808,8 +851,8 @@ def launch_bartender_interface():
 
 
 # %% [markdown] id="OjZFOOFpItNX"
-# # Run the Bartending Agent
+# # Run the Bartending Agent 🎮
 
-# %% colab={"base_uri": "https://localhost:8080/", "height": 626} id="BBPtIMysHwnz" outputId="90990cb8-1f04-487a-8d71-4efbd62b8737"
+# %% id="BBPtIMysHwnz" outputId="90990cb8-1f04-487a-8d71-4efbd62b8737"
 # Launch the interface when this cell is executed
 launch_bartender_interface()
