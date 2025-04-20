@@ -13,7 +13,7 @@
 # ---
 
 # %% [markdown]
-# # Gen AI Intensive Course Capstone 2025Q1: Bartending Agent 🍸👋
+# # Gen AI Intensive Course Capstone 2025Q1: Bartending Agent 🍹🍸
 
 # %% [markdown]
 # ## Use Case: 📝
@@ -67,10 +67,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 # %% [markdown]
-# # API Key Setup (WIP) 🤔
+# # API Key Setup (WIP) 🤖
 
 # %% [markdown]
-# ## API Key Setup (WIP) 🤔
+# ## API Key Setup (WIP) 🤖
 
 # %% [markdown] id="QyccDKQIGxxT"
 # # Bartending Agent Implementation 🤖
@@ -878,6 +878,7 @@ def get_order() -> str:
     order_details = []
     for item in order_list:
         quantity = item.get('quantity', 1)  # Default to 1 if not specified
+        
         if "modifiers" in item and item["modifiers"] != "no modifiers":
             # Show single price per item, not total price
             item_price = item['price'] / quantity if quantity > 0 else item['price']
@@ -933,9 +934,6 @@ def place_order() -> str:
         else:
             order_details.append(item['name'])
     
-    # Update the running total cost
-    order_history['total_cost'] += current_order_cost
-    
     order_text = ", ".join(order_details)
     total = sum(item['price'] for item in order_list)
     
@@ -975,7 +973,7 @@ def get_bill() -> str:
         if quantity > 1:
             bill_details.append(f"{quantity}x {item_text}: ${item_price:.2f} each = ${item['price']:.2f}")
         else:
-            bill_details.append(f"{item_text}: ${item['price']:.2f}")
+            bill_details.append(f"{item_text}: ${item_price:.2f}")
     
     bill_text = "\n".join(bill_details)
     subtotal = order_history['total_cost']
@@ -1077,7 +1075,6 @@ def initialize_llm():
         GEMINI_MODEL_VERSION = os.getenv("GEMINI_MODEL_VERSION", "gemini-2.5-flash-preview-04-17")
         llm = ChatGoogleGenerativeAI(
             model=GEMINI_MODEL_VERSION,
-            convert_system_message_to_human=True,
             temperature=config["temperature"],
             top_p=config["top_p"],
             top_k=config["top_k"],
@@ -1244,52 +1241,35 @@ print("Synthwave '84 inspired Gradio theme created (forcing dark block/input bac
 # ## Upload or Generate Bartender Avatar
 
 # %%
-use_default_avatar = True
-
-# Default avatar URL
+# Default avatar URL - fixed source for consistent experience
 default_avatar_url = "https://github.com/gen-ai-capstone-project-bartender-agent/MOK-5-ha/blob/main/assets/bartender_avatar_ai_studio.jpeg?raw=true"
 
-if use_default_avatar:
-    # Download default avatar
-    try:
-        response = requests.get(default_avatar_url)
-        if response.status_code == 200:
-            avatar_bytes = response.content
-            avatar_image = Image.open(io.BytesIO(avatar_bytes))
-            print("Using default avatar image")
-        else:
-            print(f"Failed to download default avatar. Status code: {response.status_code}")
-            # Create a blank avatar as fallback
-            avatar_image = Image.new('RGB', (300, 300), color = (73, 109, 137))
-    except Exception as e:
-        print(f"Error using default avatar: {e}")
+# Download avatar
+try:
+    response = requests.get(default_avatar_url)
+    if response.status_code == 200:
+        avatar_bytes = response.content
+        avatar_image = Image.open(io.BytesIO(avatar_bytes))
+        print("Using default avatar image")
+    else:
+        print(f"Failed to download default avatar. Status code: {response.status_code}")
         # Create a blank avatar as fallback
         avatar_image = Image.new('RGB', (300, 300), color = (73, 109, 137))
-else:
-    # Ask user to upload an avatar
-    print("Please upload an avatar image:")
-    # uploaded = files.upload()
-    # if uploaded:
-    #     avatar_key = next(iter(uploaded))
-    #     avatar_bytes = uploaded[avatar_key]
-    #     avatar_image = Image.open(io.BytesIO(avatar_bytes))
-    #     print(f"Uploaded avatar: {avatar_key}")
-    # else:
-    print("No avatar uploaded, using default")
+except Exception as e:
+    print(f"Error using default avatar: {e}")
     # Create a blank avatar as fallback
     avatar_image = Image.new('RGB', (300, 300), color = (73, 109, 137))
 
 # Display the avatar
 plt.imshow(avatar_image)
 plt.axis('off')
-plt.title("Bartender Avatar")
+plt.title("Maya - MOK 5-ha Bartender")
 plt.show()
 
 # Save avatar for use in Gradio
 avatar_path = "bartender_avatar.jpg"
 avatar_image.save(avatar_path)
 print(f"Avatar saved to {avatar_path}")
-
 
 # %% id="KgbB7vlLIdiG"
 def handle_gradio_input(
@@ -1343,7 +1323,7 @@ def launch_bartender_interface():
     theme = gr.themes.Citrus()
 
     with gr.Blocks(theme=synthwave_theme) as demo:
-        gr.Markdown("# MOK 5-ha - Meet Maya the Bartender 🍸👋")
+        gr.Markdown("# MOK 5-ha - Meet Maya the Bartender 🍹👋")
         gr.Markdown("Welcome to MOK 5-ha! I'm Maya, your virtual bartender. Ask me for a drink or check your order.")
 
         # --- Define Session State Variables ---
@@ -1404,7 +1384,7 @@ def launch_bartender_interface():
 
 
 # %% [markdown] id="OjZFOOFpItNX"
-# # Run the Bartending Agent 🍸👋
+# # Run the Bartending Agent 🍹👋
 
 # %% id="BBPtIMysHwnz" outputId="90990cb8-1f04-487a-8d71-4efbd62b8737"
 # Launch the interface when this cell is executed
