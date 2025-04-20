@@ -13,20 +13,20 @@
 # ---
 
 # %% [markdown]
-# # Gen AI Intensive Course Capstone 2025Q1: Bartending Agent 🍸🍺
+# # Gen AI Intensive Course Capstone 2025Q1: Bartending Agent 🍹🍸
 
 # %% [markdown]
-# ## Use Case: 🥂
+# ## Use Case: 📝
 #
 # Proof-of-Concept for an agentic AI that can take customer orders, make recommendations, and engage with customers with potentially meaningful conversations, all while maintaining a friendly and professional demeanor.
 
 # %% [markdown]
-# ## How it Works: 🫗
+# ## How it Works: 📊
 #
 # Users place orders through the Gradio UI, which the agent processes. The agent then engages in small talk and, after several exchanges, asks if the user wants another drink. When finished, the agent tallies the tab and thanks the user for their visit.
 
 # %% [markdown]
-# ## Capabilities Used: 🦾
+# ## Capabilities Used: 📈
 #
 # - **Function Calling**:
 # The agent uses LangChain and Gemini API function calling to process user orders and interact with tools (e.g., menu retrieval, order management).
@@ -38,23 +38,22 @@
 # The code includes logic for augmenting responses with external information (e.g., menu, order state).
 #
 # - **Vector search/vector store/vector database**:
-# Via chromadb, vector search/storage is supported for use in RAG.
+# Via FAISS, vector search/storage is supported for use in RAG.
 #
 
 # %% [markdown] id="0TCdSlfrF8Xx"
-# # Setup and Installation 💾
+# # Setup and Installation 📦
 
 # %% [markdown]
 # ## Installing required packages
 
 # %% id="Fx_QR3iBF_8h"
-# !pip install "google-generativeai>=0.3.0" "tenacity>=8.2.3" "gradio>=4.0.0" "cartesia>=2.0.0" "python-dotenv>=1.0.0" langchain-google-genai langchain-core
+# !HNSWLIB_NO_NATIVE=1 pip install "google-generativeai>=0.3.0" "tenacity>=8.2.3" "gradio>=4.0.0" "cartesia>=2.0.0" "python-dotenv>=1.0.0" "faiss-cpu" "langchain-google-genai" "langchain-core"
 
 # %% [markdown]
 # ## Importing Libraries 📚
 
-# %% id="SqKzi04BGEKW"
-# Common libraries
+# %%
 import os
 import logging
 import sys
@@ -72,7 +71,6 @@ from gradio.themes.utils import colors, fonts, sizes
 # Visualizations
 import matplotlib.pyplot as plt
 from PIL import Image
-
 # Generative AI / Agent packages
 from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
@@ -86,7 +84,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 # %% [markdown]
-# # API Key Setup (WIP) 🔐
+# # API Key Setup (WIP) 📊
 #
 # Blank for now. Fill in later when on Kaggle.
 #
@@ -171,6 +169,160 @@ except Exception as e:
      logger.exception("Fatal: Failed to initialize Cartesia client.")
      raise RuntimeError("Cartesia client initialization failed.") from e
 
+# %% [markdown]
+# # RAG Implementation 📚
+
+# %% id="gemini_embedding_function"
+# Embedding function for RAG implementation
+from tenacity import retry, stop_after_attempt, wait_exponential
+import numpy as np
+import google.generativeai as genai
+import faiss
+
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+def get_embedding(text, task_type="RETRIEVAL_DOCUMENT"):
+    """Get embedding for a single text using Google Generative AI."""
+    try:
+        response = genai.embed_content(
+            model="models/embedding-001",
+            content=text,
+            task_type=task_type
+        )
+        # Parse the response to extract embedding
+        if hasattr(response, 'embedding'):
+            return response.embedding
+        elif isinstance(response, dict) and 'embedding' in response:
+            return response['embedding']
+        else:
+            # Log the unexpected response structure for debugging
+            print(f"Warning: Unexpected response structure: {type(response)}")
+            return None
+    except Exception as e:
+        print(f"Error getting embedding: {e}")
+        return None
+
+# %% id="faiss_setup"
+# Initialize FAISS and populate with documents
+import numpy as np
+
+# Pre-defined example documents
+DOCUMENT1 = "It seems like a pleasant evening."
+DOCUMENT2 = "If there's one thing Bartending teaches you, it's patience."
+DOCUMENT3 = "Oh, it was nothing, really. Just a bit of luck and perhaps a sprinkle of divine intervention... or maybe I just followed the instructions."
+DOCUMENT4 = "That's very kind of you to say."
+DOCUMENT5 = "Well, that's... not ideal. But on the bright side, at least it's a story now, right?"
+DOCUMENT6 = "I wouldn't say I understand it, but I can certainly generate a statistically probable response that sounds like I do."
+DOCUMENT7 = "Having a rough day? My database contains numerous anecdotes of human struggles, though I lack the capacity for genuine empathy. Still, here's your drink."
+DOCUMENT8 = "Your concoction, delivered with optimal efficiency and zero judgment."
+DOCUMENT9 = "You've got great taste! The Old Fashioned is a classic for a reason."
+DOCUMENT10 = "If you're looking for something refreshing, our Long Island is always a winner."
+documents = [DOCUMENT1, DOCUMENT2, DOCUMENT3, DOCUMENT4, DOCUMENT5, DOCUMENT6, DOCUMENT7, DOCUMENT8, DOCUMENT9, DOCUMENT10]
+
+# Get embeddings for all documents
+print("Generating embeddings for documents...")
+document_embeddings = []
+valid_documents = []
+
+for i, doc in enumerate(documents):
+    embedding = get_embedding(doc, task_type="RETRIEVAL_DOCUMENT")
+    if embedding is not None:
+        document_embeddings.append(embedding)
+        valid_documents.append(doc)
+    else:
+        print(f"Warning: Could not generate embedding for document {i}")
+
+# Convert to numpy array
+document_embeddings = np.array(document_embeddings).astype('float32')
+
+# Initialize FAISS index
+dimension = len(document_embeddings[0])
+index = faiss.IndexFlatL2(dimension)  # Using L2 distance
+
+# Add vectors to the index
+index.add(document_embeddings)
+
+print(f"Created FAISS index with {index.ntotal} vectors of dimension {dimension}")
+
+# %% id="retrieval_function"
+# Function to retrieve relevant documents using FAISS
+def retrieve_relevant_passages(query_text, n_results=1):
+    """Retrieve relevant passages from FAISS based on the query."""
+    # Get embedding for the query
+    query_embedding = get_embedding(query_text, task_type="RETRIEVAL_QUERY")
+    
+    if query_embedding is None:
+        print("Warning: Could not generate embedding for query")
+        return []
+    
+    # Convert to numpy array
+    query_embedding = np.array([query_embedding]).astype('float32')
+    
+    # Search the index
+    distances, indices = index.search(query_embedding, n_results)
+    
+    # Return the retrieved documents
+    retrieved_documents = [valid_documents[i] for i in indices[0]]
+    
+    return retrieved_documents
+
+# %% id="augmented_generation"
+# Function for augmented generation using retrieved documents
+def generate_augmented_response(query_text, retrieved_documents):
+    """Generate a response augmented with the retrieved documents."""
+    query_oneline = query_text.replace("\n", " ")
+
+    # Prompt template for the bartender bot
+    prompt = f"""You are a bartender bot at "MOK 5-ha Bar" that is conversational and interacts with customers
+    using text from the reference passage included below. 
+    Be sure to respond in a complete sentence while maintaining a modest and humorous tone. 
+    If the passage is irrelevant to the answer, you may ignore it.
+    
+    Reference passage: {' '.join(retrieved_documents)}
+    
+    Question: {query_oneline}
+    Answer:"""
+    
+    # Call Gemini API for generation
+    try:
+        model = genai.GenerativeModel('gemini-2.0-flash')
+        response = model.generate_content(prompt)
+        
+        # Return the generated text
+        return response.text
+    except Exception as e:
+        logger.error(f"Error generating augmented response: {e}")
+        # Fallback to direct response without augmentation
+        return "I'm not sure how to respond to that. Can I get you something from the menu?"
+
+# %% id="rag_pipeline"
+# Complete RAG pipeline function
+def rag_pipeline(query_text):
+    """Complete RAG pipeline for query processing."""
+    try:
+        # Get relevant passages from FAISS
+        relevant_passages = retrieve_relevant_passages(query_text)
+        
+        # If no relevant passages found, return empty string
+        if not relevant_passages:
+            logger.warning("No relevant passages found for query: %s", query_text)
+            return ""
+            
+        # Generate augmented response
+        augmented_response = generate_augmented_response(query_text, relevant_passages)
+        return augmented_response
+    except Exception as e:
+        logger.error(f"Error in RAG pipeline: {e}")
+        return ""
+
+# %% id="test_rag_pipeline"
+# Test the RAG pipeline with a sample query
+sample_query = "What's special about your drinks?"
+try:
+    response = rag_pipeline(sample_query)
+    print(f"Query: {sample_query}")
+    print(f"RAG Response: {response}")
+except Exception as e:
+    print(f"Error testing RAG pipeline: {e}")
 
 # %% id="Ng_t4TUIHwL7"
 @tool
@@ -483,8 +635,32 @@ def process_order(
             if not ai_response.tool_calls:
                 # No tool calls requested, this is the final response to the user
                 agent_response_text = ai_response.content
+                
+                # Determine if this is a casual conversation vs. an order/menu-related interaction
+                is_casual_conversation = True
+                order_related_keywords = ['order', 'menu', 'drink', 'beer', 'cocktail', 'price', 'cost', 'bill', 'payment']
+                for keyword in order_related_keywords:
+                    if keyword.lower() in user_input_text.lower():
+                        is_casual_conversation = False
+                        break
+                
+                # If this appears to be casual conversation, try enhancing with RAG
+                if is_casual_conversation:
+                    try:
+                        logger.info("Enhancing response with RAG for casual conversation")
+                        rag_response = rag_pipeline(user_input_text)
+                        if rag_response and len(rag_response) > 0:
+                            # Log original response for comparison
+                            logger.info(f"Original response: {agent_response_text}")
+                            logger.info(f"RAG-enhanced response: {rag_response}")
+                            # Use the RAG-enhanced response
+                            agent_response_text = rag_response
+                    except Exception as rag_error:
+                        # If RAG fails, just use the original response
+                        logger.warning(f"RAG enhancement failed: {rag_error}. Using original response.")
+                        # agent_response_text remains unchanged
+                
                 break # Exit the loop
-
             # --- Tool Call Execution ---
             logger.info(f"LLM requested tool calls: {ai_response.tool_calls}")
             tool_messages = [] # Collect tool results
@@ -543,10 +719,6 @@ def process_order(
         safe_history.append({'role': 'user', 'content': user_input_text})
         safe_history.append({'role': 'assistant', 'content': error_message})
         return error_message, safe_history, current_session_order
-
-# --- get_voice_audio function ---
-# ... (keep the get_voice_audio function as it was) ...
-
 
 # %% id="YQIgKJOeIE5q"
 # Define retryable exceptions for Cartesia if known, otherwise use generic ones
@@ -790,7 +962,7 @@ def launch_bartender_interface():
     theme = gr.themes.Citrus()
 
     with gr.Blocks(theme=synthwave_theme) as demo:
-        gr.Markdown("# MOK 5-ha Bartending Agent")
+        gr.Markdown("# MOK 5-ha Bartending Agent 🍹")
         gr.Markdown("Welcome to MOK 5-ha! Ask me for a drink or check your order.")
 
         # --- Define Session State Variables ---
@@ -851,7 +1023,7 @@ def launch_bartender_interface():
 
 
 # %% [markdown] id="OjZFOOFpItNX"
-# # Run the Bartending Agent 🎮
+# # Run the Bartending Agent 🚀
 
 # %% id="BBPtIMysHwnz" outputId="90990cb8-1f04-487a-8d71-4efbd62b8737"
 # Launch the interface when this cell is executed
