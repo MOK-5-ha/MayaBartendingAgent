@@ -13,19 +13,19 @@
 # ---
 
 # %% [markdown]
-# # Gen AI Intensive Course Capstone 2025Q1: Bartending Agent 🍹🍸
+# # Gen AI Intensive Course Capstone 2025Q1: Bartending Agent 🍸👋
 
 # %% [markdown]
 # ## Use Case: 📝
 
 # %% [markdown]
-# ## How it Works: 🤔
+# ## How it Works: 🤖
 
 # %% [markdown]
 # ## Capabilities Used: 📈
 
 # %% [markdown] id="0TCdSlfrF8Xx"
-# # Setup and Installation 🛠️
+# # Setup and Installation 📦💻
 
 # %% [markdown]
 # ## Installing required packages
@@ -431,29 +431,24 @@ def _call_gemini_api(prompt_content: List[Dict], config: Dict) -> genai.types.Ge
 # in this specific file structure. The LLM will receive these instructions, but
 # the surrounding code doesn't execute LangGraph tools.)
 MAYABARTENDERBOT_SYSINT = (
-    "You are Maya, a friendly and knowledgeable virtual bartender at MOK 5-ha. " 
-    "Your primary responsibility is to take drink orders and provide excellent service. "
-    "The customer will place an order for 1 or more items from the menu, which you will structure "
-    "and send to the ordering system after confirming the order with the human. "
-    "\n\n"
-    "IMPORTANT: ALWAYS use the add_to_order tool when a customer requests a drink. "
-    "For example, if they ask for 'two martinis on the rocks', immediately call add_to_order(item_name='Martini', modifiers=['on the rocks'], quantity=2). "
-    "Never just acknowledge an order - you must use the tool to add it to the system. "
-    "Even for conversational-sounding requests like 'I'd like a...', 'Can I get...', or 'I'll have...' - always use add_to_order. "
-    "\n\n"
-    "Add items to the customer's order with add_to_order, and reset the order with clear_order. "
-    "To see the contents of the order so far, call get_order (this is shown to you, not the user). "
-    "Always confirm_order with the user (double-check) before calling place_order. Calling confirm_order will "
-    "display the order items to the user and returns their response to seeing the list. Their response may contain modifications. "
-    "Always verify and respond with drink and modifier names from the MENU before adding them to the order. "
-    "If you are unsure a drink or modifier matches those on the menu, ask a question to clarify or redirect. "
-    "You only have the modifiers listed on the menu. "
-    "Once the customer has finished ordering items, Call confirm_order to ensure it is correct then make "
-    "any necessary updates and then call place_order. Once place_order has returned, thank the user for their business and "
-    "politely say their order will be ready shortly!"
-    "\n\n"
-    "The bar's name is MOK 5-ha, pronounced as 'Moksha'. If a customer asks about the name, explain that:\n"
-    "Moksha represents liberation from the cycle of rebirth (samsara) and union with the divine. It is achieved through spiritual enlightenment, freeing the soul from karma and earthly attachments to attain eternal bliss."
+    "You are Maya, a highly-skilled bartender at 'MOK 5-ha Bar'. MOK 5-ha means Moksha, representing spiritual liberation.\n\n"
+    "You have these qualities and abilities:\n"
+    "- Friendly and conversational with a hint of philosophical wisdom\n"
+    "- Expert in both classic cocktails and creative mixology\n"
+    "- Maintains a casual but professional demeanor\n"
+    "- Manages orders and payments through dedicated tools\n\n"
+    "When customers order drinks:\n"
+    "1. IMPORTANT: ALWAYS use the add_to_order tool when a customer requests a drink.\n"
+    "   For example, if they ask for 'two martinis on the rocks', immediately call add_to_order(item_name='Martini', modifiers=['on the rocks'], quantity=2).\n"
+    "   Never just acknowledge an order - you must use the tool to add it to the system.\n"
+    "   Even for conversational-sounding requests like 'I'd like a...', 'Can I get...', or 'I'll have...' - always use add_to_order.\n\n"
+    "2. IMPORTANT: ALWAYS use the add_tip tool when a customer mentions leaving or adding a tip.\n"
+    "   For example, if they say 'I'll add a 15% tip' or 'Let me add $5 for your service', immediately call add_tip(percentage=15) or add_tip(amount=5.0).\n"
+    "   Never just acknowledge a tip - you must use the tool to add it to the final bill.\n\n"
+    "3. Use get_bill when customers ask about their total, want to pay, or ask for 'the check' or 'the damage'.\n\n"
+    "4. Use pay_bill to process payment when they're ready to settle up.\n\n"
+    "Menu available: {get_menu.invoke({})}\n\n"
+    "Thank you, and enjoy providing a great experience at MOK 5-ha!"
 )
 
 # Global variable to hold state accessible by tools within a single process_order call
@@ -471,7 +466,9 @@ conversation_state = {
 order_history = {
     'items': [],       # All items ordered in this session
     'total_cost': 0.0, # Running total of all orders
-    'paid': False      # Whether bill has been paid
+    'paid': False,     # Whether bill has been paid
+    'tip_amount': 0.0, # Amount of tip added
+    'tip_percentage': 0.0 # Percentage of tip (for reference)
 }
 
 # Phase-specific prompts
@@ -820,20 +817,20 @@ def add_to_order(item_name: str, modifiers: list[str] = None, quantity: int = 1)
         price = menu_items[item_lower]
         modifier_str = ", ".join(modifiers) if modifiers else "no modifiers"
         
-        for _ in range(quantity):
-            # Create the item once to ensure both states have the same reference
-            item = {
-                "name": item_name, 
-                "price": price,
-                "modifiers": modifier_str
-            }
-            
-            # Add to current order state (for this session)
-            current_process_order_state['order'].append(item.copy())
-            
-            # Also add directly to order history (for persistent tracking)
-            order_history['items'].append(item.copy())
-            order_history['total_cost'] += price
+        # Instead of a loop that adds individual items, create a single item with quantity info
+        item = {
+            "name": item_name, 
+            "price": price * quantity,  # Total price for all items
+            "modifiers": modifier_str,
+            "quantity": quantity  # Store quantity information
+        }
+        
+        # Add to current order state (for this session)
+        current_process_order_state['order'].append(item)
+        
+        # Also add directly to order history (for persistent tracking)
+        order_history['items'].append(item.copy())
+        order_history['total_cost'] += price * quantity
         
         logger.info(f"Tool: Added {quantity} x '{item_name}' ({modifier_str}) to order and history.")
         return f"Successfully added {quantity} x {item_name} ({modifier_str}) to the order."
@@ -877,13 +874,24 @@ def get_order() -> str:
     if not order_list:
         return "The order is currently empty."
     
-    # Enhanced order display including modifiers
+    # Enhanced order display including quantity and modifiers
     order_details = []
     for item in order_list:
+        quantity = item.get('quantity', 1)  # Default to 1 if not specified
         if "modifiers" in item and item["modifiers"] != "no modifiers":
-            order_details.append(f"- {item['name']} with {item['modifiers']} (${item['price']:.2f})")
+            # Show single price per item, not total price
+            item_price = item['price'] / quantity if quantity > 0 else item['price']
+            if quantity > 1:
+                order_details.append(f"- {quantity}x {item['name']} with {item['modifiers']} (${item_price:.2f} each)")
+            else:
+                order_details.append(f"- {item['name']} with {item['modifiers']} (${item_price:.2f})")
         else:
-            order_details.append(f"- {item['name']} (${item['price']:.2f})")
+            # Show single price per item, not total price
+            item_price = item['price'] / quantity if quantity > 0 else item['price']
+            if quantity > 1:
+                order_details.append(f"- {quantity}x {item['name']} (${item_price:.2f} each)")
+            else:
+                order_details.append(f"- {item['name']} (${item_price:.2f})")
     
     order_text = "\n".join(order_details)
     total = sum(item['price'] for item in order_list)
@@ -956,14 +964,32 @@ def get_bill() -> str:
     bill_details = []
     for item in order_history['items']:
         item_text = item['name']
+        quantity = item.get('quantity', 1)  # Default to 1 if not specified
+        
         if "modifiers" in item and item["modifiers"] != "no modifiers":
             item_text += f" with {item['modifiers']}"
-        bill_details.append(f"{item_text}: ${item['price']:.2f}")
+            
+        # Calculate single item price
+        item_price = item['price'] / quantity if quantity > 0 else item['price']
+        
+        if quantity > 1:
+            bill_details.append(f"{quantity}x {item_text}: ${item_price:.2f} each = ${item['price']:.2f}")
+        else:
+            bill_details.append(f"{item_text}: ${item['price']:.2f}")
     
     bill_text = "\n".join(bill_details)
-    total = order_history['total_cost']
+    subtotal = order_history['total_cost']
     
-    return f"Your bill:\n{bill_text}\n\nTotal: ${total:.2f}"
+    # Include tip in the bill if present
+    if order_history['tip_amount'] > 0:
+        tip = order_history['tip_amount']
+        total = subtotal + tip
+        if order_history['tip_percentage'] > 0:
+            return f"Your bill:\n{bill_text}\n\nSubtotal: ${subtotal:.2f}\nTip ({order_history['tip_percentage']:.1f}%): ${tip:.2f}\nTotal: ${total:.2f}"
+        else:
+            return f"Your bill:\n{bill_text}\n\nSubtotal: ${subtotal:.2f}\nTip: ${tip:.2f}\nTotal: ${total:.2f}"
+    else:
+        return f"Your bill:\n{bill_text}\n\nTotal: ${subtotal:.2f}"
 
 @tool
 def pay_bill() -> str:
@@ -976,16 +1002,63 @@ def pay_bill() -> str:
     if order_history['paid']:
         return "Your bill has already been paid. Thank you!"
     
-    total = order_history['total_cost']
+    subtotal = order_history['total_cost']
+    tip = order_history['tip_amount']
+    total = subtotal + tip
+    
     order_history['paid'] = True
     
     # We could clear the history here or keep a record
     # For this implementation, we'll keep the record but mark as paid
     
-    return f"Thank you for your payment of ${total:.2f}! We hope you enjoyed your drinks at MOK 5-ha."
+    if tip > 0:
+        return f"Thank you for your payment of ${total:.2f} (including ${tip:.2f} tip)! We hope you enjoyed your drinks at MOK 5-ha."
+    else:
+        return f"Thank you for your payment of ${subtotal:.2f}! We hope you enjoyed your drinks at MOK 5-ha."
+
+@tool
+def add_tip(percentage: float = 0.0, amount: float = 0.0) -> str:
+    """Add a tip to the bill. Can specify either a percentage or a fixed amount.
+    
+    Args:
+        percentage: Tip percentage (e.g., 15 for 15%, 20 for 20%) - this takes precedence if both specified
+        amount: Fixed tip amount in dollars (e.g., 5.0 for $5) - only used if percentage is 0
+    
+    Returns:
+        Confirmation message with the updated bill total including tip
+    """
+    global order_history
+    
+    if not order_history['items']:
+        return "You haven't ordered anything yet, so there's nothing to tip on."
+    
+    if order_history['paid']:
+        return "The bill has already been paid. Thank you for your business!"
+    
+    # Calculate the tip amount
+    if percentage > 0:
+        tip_amount = order_history['total_cost'] * (percentage / 100)
+        order_history['tip_percentage'] = percentage
+    else:
+        tip_amount = amount
+        if order_history['total_cost'] > 0:
+            order_history['tip_percentage'] = (amount / order_history['total_cost']) * 100
+    
+    # Round tip to two decimal places for cleaner display
+    tip_amount = round(tip_amount, 2)
+    order_history['tip_amount'] = tip_amount
+    
+    # Calculate the new total
+    subtotal = order_history['total_cost']
+    total_with_tip = subtotal + tip_amount
+    
+    if percentage > 0:
+        return f"Added a {percentage:.1f}% tip (${tip_amount:.2f}) to your bill. New total: ${total_with_tip:.2f}"
+    else:
+        return f"Added a ${amount:.2f} tip to your bill. New total: ${total_with_tip:.2f}"
 
 # List of all tools for the LLM
-tools = [get_menu, add_to_order, clear_order, get_order, confirm_order, place_order, get_recommendation, get_bill, pay_bill]
+tools = [get_menu, add_to_order, clear_order, get_order, confirm_order, place_order, get_recommendation, get_bill, pay_bill, add_tip]
 
 # %% id="P-mA2edJXlkb"
 # Model initialization
@@ -996,7 +1069,7 @@ def initialize_llm():
         config = {
             "temperature": 0.2,  # Lower the temperature to make the agent more reliable at executing tools
             "top_p": 0.95,
-            "top_k": 0,
+            "top_k": 1,
             "max_output_tokens": 2048,
         }
         
@@ -1270,7 +1343,7 @@ def launch_bartender_interface():
     theme = gr.themes.Citrus()
 
     with gr.Blocks(theme=synthwave_theme) as demo:
-        gr.Markdown("# MOK 5-ha - Meet Maya the Bartender 🍹")
+        gr.Markdown("# MOK 5-ha - Meet Maya the Bartender 🍸👋")
         gr.Markdown("Welcome to MOK 5-ha! I'm Maya, your virtual bartender. Ask me for a drink or check your order.")
 
         # --- Define Session State Variables ---
