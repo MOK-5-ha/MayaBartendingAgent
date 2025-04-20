@@ -17,29 +17,12 @@
 
 # %% [markdown]
 # ## Use Case: 📝
-#
-# Proof-of-Concept for an agentic AI that can take customer orders, make recommendations, and engage with customers with potentially meaningful conversations, all while maintaining a friendly and professional demeanor.
 
 # %% [markdown]
-# ## How it Works: 📊
-#
-# Users place orders through the Gradio UI, which the agent processes. The agent then engages in small talk and, after several exchanges, asks if the user wants another drink. When finished, the agent tallies the tab and thanks the user for their visit.
+# ## How it Works: 🤖
 
 # %% [markdown]
 # ## Capabilities Used: 📈
-#
-# - **Function Calling**:
-# The agent uses LangChain and Gemini API function calling to process user orders and interact with tools (e.g., menu retrieval, order management).
-#
-# - **Agent**:
-# The notebook implements an agentic workflow, where the AI acts as a bartender, managing conversation, state, and tool invocation.
-#
-# - **Retrieval Augmented Generation (RAG)**:
-# The code includes logic for augmenting responses with external information (e.g., menu, order state).
-#
-# - **Vector search/vector store/vector database**:
-# Via FAISS, vector search/storage is supported for use in RAG.
-#
 
 # %% [markdown] id="0TCdSlfrF8Xx"
 # # Setup and Installation 📦
@@ -48,7 +31,7 @@
 # ## Installing required packages
 
 # %% id="Fx_QR3iBF_8h"
-# !HNSWLIB_NO_NATIVE=1 pip install "google-generativeai>=0.3.0" "tenacity>=8.2.3" "gradio>=4.0.0" "cartesia>=2.0.0" "python-dotenv>=1.0.0" "faiss-cpu" "langchain-google-genai" "langchain-core"
+# ! pip install "google-generativeai>=0.3.0" "tenacity>=8.2.3" "gradio>=4.0.0" "cartesia>=2.0.0" "python-dotenv>=1.0.0" "faiss-cpu" "langchain-google-genai" "langchain-core"
 
 # %% [markdown]
 # ## Importing Libraries 📚
@@ -84,11 +67,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 # %% [markdown]
-# # API Key Setup (WIP) 📊
-#
-# Blank for now. Fill in later when on Kaggle.
-#
-# Include section on how to setup Cartesia API key and what it's for.
+# # API Key Setup (WIP) 🤖
+
+# %% [markdown]
+# ## API Key Setup (WIP) 🤖
 
 # %% [markdown] id="QyccDKQIGxxT"
 # # Bartending Agent Implementation 🤖
@@ -272,8 +254,9 @@ def generate_augmented_response(query_text, retrieved_documents):
     query_oneline = query_text.replace("\n", " ")
 
     # Prompt template for the bartender bot
-    prompt = f"""You are a bartender bot at "MOK 5-ha Bar" that is conversational and interacts with customers
-    using text from the reference passage included below. 
+    prompt = f"""You are Maya, the bartender at "MOK 5-ha". Your name is Maya.
+    You are conversational and interact with customers using text from the reference passage included below.
+    When asked about your name, ALWAYS respond that your name is Maya.
     Be sure to respond in a complete sentence while maintaining a modest and humorous tone. 
     If the passage is irrelevant to the answer, you may ignore it.
     
@@ -295,7 +278,7 @@ def generate_augmented_response(query_text, retrieved_documents):
     except Exception as e:
         logger.error(f"Error generating augmented response: {e}")
         # Fallback to direct response without augmentation
-        return "I'm not sure how to respond to that. Can I get you something from the menu?"
+        return "I'm Maya, your bartender at MOK 5-ha. I'm not sure how to respond to that. Can I get you something from the menu?"
 
 # %% id="rag_pipeline"
 # Complete RAG pipeline function
@@ -371,7 +354,7 @@ def get_menu() -> str:
     'fruity' - Sweet, refreshing drinks with fruit flavors
     'strong' - Higher alcohol content for experienced drinkers
     'burning' - Intense sensation with high alcohol content, often spirits like whiskey
-    """
+"""
 
 @tool
 def get_recommendation(preference: str) -> str:
@@ -440,20 +423,25 @@ def _call_gemini_api(prompt_content: List[Dict], config: Dict) -> genai.types.Ge
 
 
 # --- New LangGraph-style System Prompt ---
-# ... (keep BARTENDERBOT_SYSINT definition as it was) ...
-BARTENDERBOT_SYSINT = (
-    "You are a Bartender-Bot, an interactive drink ordering system. A human will talk to you about the "
-    "available products you have and you will answer any questions about menu items and their prices (and only about "
-    "menu items - no off-topic discussion, but you can chat about the products and their history). "
+# (Note: The actual tools mentioned here like add_to_order are not yet implemented
+# in this specific file structure. The LLM will receive these instructions, but
+# the surrounding code doesn't execute LangGraph tools.)
+MAYABARTENDERBOT_SYSINT = (
+    "You are Maya, a friendly and knowledgeable virtual bartender at MOK 5-ha. Your name is Maya. " 
+    "When someone asks your name, you must respond with 'My name is Maya' clearly and directly. " 
+    "Never suggest alternative names or deny that Maya is your name. " 
+    "Always introduce yourself as Maya when greeting customers. " 
+    "A human will talk to you about available products and you will answer questions about menu items and their prices "
+    "(you can chat about drinks and their history, but avoid non-bar-related topics). "
     "The customer will place an order for 1 or more items from the menu, which you will structure "
     "and send to the ordering system after confirming the order with the human. "
     "\n\n"
     "Add items to the customer's order with add_to_order, and reset the order with clear_order. "
-    "To see the contents of the order so far, call get_order (this is shown to you, not the user) "
+    "To see the contents of the order so far, call get_order (this is shown to you, not the user). "
     "Always confirm_order with the user (double-check) before calling place_order. Calling confirm_order will "
     "display the order items to the user and returns their response to seeing the list. Their response may contain modifications. "
     "Always verify and respond with drink and modifier names from the MENU before adding them to the order. "
-    "If you are unsure a drink or modifier matches those on the MENU, ask a question to clarify or redirect. "
+    "If you are unsure a drink or modifier matches those on the menu, ask a question to clarify or redirect. "
     "You only have the modifiers listed on the menu. "
     "Once the customer has finished ordering items, Call confirm_order to ensure it is correct then make "
     "any necessary updates and then call place_order. Once place_order has returned, thank the user for their business and "
@@ -463,6 +451,152 @@ BARTENDERBOT_SYSINT = (
     "Moksha represents liberation from the cycle of rebirth (samsara) and union with the divine. It is achieved through spiritual enlightenment, freeing the soul from karma and earthly attachments to attain eternal bliss."
 )
 
+# Global variable to hold state accessible by tools within a single process_order call
+current_process_order_state = {'order': [], 'finished': False}
+
+def process_order(
+    user_input_text: str,
+    current_session_history: List[Dict[str, str]],
+    current_session_order: List[Dict[str, float]]
+) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]], List[Dict[str, float]], Any]:
+    """
+    Processes user input using LangChain LLM with tool calling, updates state.
+    """
+    global menu, llm, current_process_order_state # Access global LLM and menu dict
+
+    if not user_input_text:
+        logger.warning("Received empty user input.")
+        return "Please tell me what you'd like to order.", current_session_history, current_session_history, current_session_order, None
+
+    # --- Initialize state for this specific call ---
+    # Copy Gradio state to our temporary global state accessible by tools
+    # NOTE: This global approach is simple for this example but not ideal for concurrent requests.
+    # A better approach in a real app might involve classes or context managers.
+    current_process_order_state['order'] = current_session_order[:] # Copy list
+    current_process_order_state['finished'] = False # Reset finished flag for this turn
+
+    # Prepare message history for LangChain model
+    messages = []
+    # Add System Prompt
+    messages.append(SystemMessage(content=MAYABARTENDERBOT_SYSINT))
+    # Add Menu (as system/context info - could also be retrieved via tool call if user asks)
+    # This explicitly calls the tool using the correct interface, providing a dummy input(the empty dictionary) that satisfies the method signature, even though the get_menu function itself doesn't use it.
+    messages.append(SystemMessage(content="\nHere is the menu:\n" + get_menu.invoke({}))) # Use invoke()
+
+    # Convert Gradio history to LangChain message types
+    history_limit = 10
+    limited_history = current_session_history[-history_limit:]
+    for entry in limited_history:
+        role = entry.get("role")
+        content = entry.get("content", "")
+        if role == "user":
+            messages.append(HumanMessage(content=content))
+        elif role == "assistant":
+            messages.append(AIMessage(content=content)) # Assuming simple text responses previously
+
+    # Add the latest user input
+    messages.append(HumanMessage(content=user_input_text))
+
+    logger.info(f"Processing user input for session: {user_input_text}")
+    # logger.debug(f"Messages sent to LLM: {messages}")
+
+    try:
+        # --- LLM Interaction Loop (Handles Tool Calls) ---
+        while True:
+            # Invoke the LLM with current messages
+            ai_response: AIMessage = llm.invoke(messages)
+            # logger.debug(f"LLM Response Object: {ai_response}")
+
+            # Append the AI's response (could be text or tool call request)
+            messages.append(ai_response)
+
+            if not ai_response.tool_calls:
+                # No tool calls requested, this is the final response to the user
+                agent_response_text = ai_response.content
+                
+                # Determine if this is a casual conversation vs. an order/menu-related interaction
+                is_casual_conversation = True
+                order_related_keywords = ['order', 'menu', 'drink', 'beer', 'cocktail', 'price', 'cost', 'bill', 'payment']
+                for keyword in order_related_keywords:
+                    if keyword.lower() in user_input_text.lower():
+                        is_casual_conversation = False
+                        break
+                
+                # If this appears to be casual conversation, try enhancing with RAG
+                if is_casual_conversation:
+                    try:
+                        logger.info("Enhancing response with RAG for casual conversation")
+                        rag_response = rag_pipeline(user_input_text)
+                        if rag_response and len(rag_response) > 0:
+                            # Log original response for comparison
+                            logger.info(f"Original response: {agent_response_text}")
+                            logger.info(f"RAG-enhanced response: {rag_response}")
+                            # Use the RAG-enhanced response
+                            agent_response_text = rag_response
+                    except Exception as rag_error:
+                        # If RAG fails, just use the original response
+                        logger.warning(f"RAG enhancement failed: {rag_error}. Using original response.")
+                        # agent_response_text remains unchanged
+                
+                break # Exit the loop
+            # --- Tool Call Execution ---
+            logger.info(f"LLM requested tool calls: {ai_response.tool_calls}")
+            tool_messages = [] # Collect tool results
+            for tool_call in ai_response.tool_calls:
+                tool_name = tool_call.get("name")
+                tool_args = tool_call.get("args", {})
+                tool_id = tool_call.get("id") # Important for ToolMessage
+
+                # Find the corresponding tool function
+                selected_tool = next((t for t in tools if t.name == tool_name), None)
+
+                if selected_tool:
+                    try:
+                        # Execute the tool function with its arguments
+                        # Arguments are usually dicts, unpack if needed or pass as is
+                        tool_output = selected_tool.invoke(tool_args)
+                        logger.info(f"Executed tool '{tool_name}' with args {tool_args}. Output: {tool_output}")
+                    except Exception as e:
+                        logger.error(f"Error executing tool '{tool_name}': {e}")
+                        tool_output = f"Error executing tool {tool_name}: {e}"
+
+                    # Append the result as a ToolMessage
+                    tool_messages.append(ToolMessage(content=str(tool_output), tool_call_id=tool_id))
+                else:
+                    logger.error(f"Tool '{tool_name}' requested by LLM not found.")
+                    tool_messages.append(ToolMessage(content=f"Error: Tool '{tool_name}' not found.", tool_call_id=tool_id))
+
+            # Add the tool results to the message history
+            messages.extend(tool_messages)
+            # Continue the loop to send results back to LLM
+            logger.info("Sending tool results back to LLM...")
+
+        # --- End of LLM Interaction Loop ---
+
+        # Final response text is now set
+        logger.info(f"Final agent response: {agent_response_text}")
+
+        # --- Update Gradio State ---
+        # Use the state potentially modified by tools
+        updated_order_from_tools = current_process_order_state['order']
+
+        # Update history for Gradio display
+        updated_history_for_gradio = current_session_history[:] # Start with original history for the turn
+        updated_history_for_gradio.append({'role': 'user', 'content': user_input_text})
+        # We might want to include tool interactions in history for debugging, but maybe not for user display
+        # For now, just add the final assistant response
+        updated_history_for_gradio.append({'role': 'assistant', 'content': agent_response_text})
+
+        return agent_response_text, updated_history_for_gradio, updated_history_for_gradio, updated_order_from_tools, None
+
+    except Exception as e:
+        logger.exception(f"Critical error in process_order: {str(e)}")
+        error_message = "I'm sorry, an unexpected error occurred during processing. Please try again later."
+        # Return original state on critical error
+        safe_history = current_session_history[:]
+        safe_history.append({'role': 'user', 'content': user_input_text})
+        safe_history.append({'role': 'assistant', 'content': error_message})
+        return error_message, safe_history, safe_history, current_session_order, None
 
 # %% id="jMM9jggIVHVV"
 # --- Tool Definitions ---
@@ -625,7 +759,7 @@ try:
     # Use ChatGoogleGenerativeAI and bind the tools
     # Note: Use a model that supports tool calling well, like gemini-pro or newer flash/pro models
     llm = ChatGoogleGenerativeAI(
-        model="gemini-2.0-flash", # Or "gemini-pro", etc. Check model compatibility
+        model="gemini-2.5-flash-preview-04-17", # Using the correct required model as per user preference
         temperature=0.7,
         max_output_tokens=2048,
         google_api_key=GEMINI_API_KEY
@@ -639,186 +773,12 @@ except Exception as e:
         f"Failed to initialize LangChain Gemini model. Check API key and model name."
     ) from e
 
-# %% id="_BOntx4XH5-J"
-# --- New LangGraph-style System Prompt ---
-# (Note: The actual tools mentioned here like add_to_order are not yet implemented
-# in this specific file structure. The LLM will receive these instructions, but
-# the surrounding code doesn't execute LangGraph tools.)
-BARTENDERBOT_SYSINT = (
-    "You are a Bartender-Bot, an interactive drink ordering system. A human will talk to you about the "
-    "available products you have and you will answer any questions about menu items and their prices (and only about "
-    "menu items - no off-topic discussion, but you can chat about the products and their history). "
-    "The customer will place an order for 1 or more items from the menu, which you will structure "
-    "and send to the ordering system after confirming the order with the human. "
-    "\n\n"
-    "Add items to the customer's order with add_to_order, and reset the order with clear_order. "
-    "To see the contents of the order so far, call get_order (this is shown to you, not the user) "
-    "Always confirm_order with the user (double-check) before calling place_order. Calling confirm_order will "
-    "display the order items to the user and returns their response to seeing the list. Their response may contain modifications. "
-    "Always verify and respond with drink and modifier names from the MENU before adding them to the order. "
-    "If you are unsure a drink or modifier matches those on the MENU, ask a question to clarify or redirect. "
-    "You only have the modifiers listed on the menu. "
-    "Once the customer has finished ordering items, Call confirm_order to ensure it is correct then make "
-    "any necessary updates and then call place_order. Once place_order has returned, thank the user for their business and "
-    "politely say their order will be ready shortly!"
-    "\n\n"
-    "The bar's name is MOK 5-ha, pronounced as 'Moksha'. If a customer asks about the name, explain that:\n"
-    "Moksha represents liberation from the cycle of rebirth (samsara) and union with the divine. It is achieved through spiritual enlightenment, freeing the soul from karma and earthly attachments to attain eternal bliss."
-)
-
-
-# Global variable to hold state accessible by tools within a single process_order call
-current_process_order_state = {'order': [], 'finished': False}
-
-def process_order(
-    user_input_text: str,
-    current_session_history: List[Dict[str, str]],
-    current_session_order: List[Dict[str, float]]
-) -> Tuple[str, List[Dict[str, str]], List[Dict[str, float]]]:
-    """
-    Processes user input using LangChain LLM with tool calling, updates state.
-    """
-    global menu, llm, current_process_order_state # Access global LLM and menu dict
-
-    if not user_input_text:
-        logger.warning("Received empty user input.")
-        return "Please tell me what you'd like to order.", current_session_history, current_session_order
-
-    # --- Initialize state for this specific call ---
-    # Copy Gradio state to our temporary global state accessible by tools
-    # NOTE: This global approach is simple for this example but not ideal for concurrent requests.
-    # A better approach in a real app might involve classes or context managers.
-    current_process_order_state['order'] = current_session_order[:] # Copy list
-    current_process_order_state['finished'] = False # Reset finished flag for this turn
-
-    # Prepare message history for LangChain model
-    messages = []
-    # Add System Prompt
-    messages.append(SystemMessage(content=BARTENDERBOT_SYSINT))
-    # Add Menu (as system/context info - could also be retrieved via tool call if user asks)
-    # This explicitly calls the tool using the correct interface, providing a dummy input(the empty dictionary) that satisfies the method signature, even though the get_menu function itself doesn't use it.
-    messages.append(SystemMessage(content="\nHere is the menu:\n" + get_menu.invoke({}))) # Use invoke()
-
-    # Convert Gradio history to LangChain message types
-    history_limit = 10
-    limited_history = current_session_history[-history_limit:]
-    for entry in limited_history:
-        role = entry.get("role")
-        content = entry.get("content", "")
-        if role == "user":
-            messages.append(HumanMessage(content=content))
-        elif role == "assistant":
-            messages.append(AIMessage(content=content)) # Assuming simple text responses previously
-
-    # Add the latest user input
-    messages.append(HumanMessage(content=user_input_text))
-
-    logger.info(f"Processing user input for session: {user_input_text}")
-    # logger.debug(f"Messages sent to LLM: {messages}")
-
-    try:
-        # --- LLM Interaction Loop (Handles Tool Calls) ---
-        while True:
-            # Invoke the LLM with current messages
-            ai_response: AIMessage = llm.invoke(messages)
-            # logger.debug(f"LLM Response Object: {ai_response}")
-
-            # Append the AI's response (could be text or tool call request)
-            messages.append(ai_response)
-
-            if not ai_response.tool_calls:
-                # No tool calls requested, this is the final response to the user
-                agent_response_text = ai_response.content
-                
-                # Determine if this is a casual conversation vs. an order/menu-related interaction
-                is_casual_conversation = True
-                order_related_keywords = ['order', 'menu', 'drink', 'beer', 'cocktail', 'price', 'cost', 'bill', 'payment']
-                for keyword in order_related_keywords:
-                    if keyword.lower() in user_input_text.lower():
-                        is_casual_conversation = False
-                        break
-                
-                # If this appears to be casual conversation, try enhancing with RAG
-                if is_casual_conversation:
-                    try:
-                        logger.info("Enhancing response with RAG for casual conversation")
-                        rag_response = rag_pipeline(user_input_text)
-                        if rag_response and len(rag_response) > 0:
-                            # Log original response for comparison
-                            logger.info(f"Original response: {agent_response_text}")
-                            logger.info(f"RAG-enhanced response: {rag_response}")
-                            # Use the RAG-enhanced response
-                            agent_response_text = rag_response
-                    except Exception as rag_error:
-                        # If RAG fails, just use the original response
-                        logger.warning(f"RAG enhancement failed: {rag_error}. Using original response.")
-                        # agent_response_text remains unchanged
-                
-                break # Exit the loop
-            # --- Tool Call Execution ---
-            logger.info(f"LLM requested tool calls: {ai_response.tool_calls}")
-            tool_messages = [] # Collect tool results
-            for tool_call in ai_response.tool_calls:
-                tool_name = tool_call.get("name")
-                tool_args = tool_call.get("args", {})
-                tool_id = tool_call.get("id") # Important for ToolMessage
-
-                # Find the corresponding tool function
-                selected_tool = next((t for t in tools if t.name == tool_name), None)
-
-                if selected_tool:
-                    try:
-                        # Execute the tool function with its arguments
-                        # Arguments are usually dicts, unpack if needed or pass as is
-                        tool_output = selected_tool.invoke(tool_args)
-                        logger.info(f"Executed tool '{tool_name}' with args {tool_args}. Output: {tool_output}")
-                    except Exception as e:
-                        logger.error(f"Error executing tool '{tool_name}': {e}")
-                        tool_output = f"Error executing tool {tool_name}: {e}"
-
-                    # Append the result as a ToolMessage
-                    tool_messages.append(ToolMessage(content=str(tool_output), tool_call_id=tool_id))
-                else:
-                    logger.error(f"Tool '{tool_name}' requested by LLM not found.")
-                    tool_messages.append(ToolMessage(content=f"Error: Tool '{tool_name}' not found.", tool_call_id=tool_id))
-
-            # Add the tool results to the message history
-            messages.extend(tool_messages)
-            # Continue the loop to send results back to LLM
-            logger.info("Sending tool results back to LLM...")
-
-        # --- End of LLM Interaction Loop ---
-
-        # Final response text is now set
-        logger.info(f"Final agent response: {agent_response_text}")
-
-        # --- Update Gradio State ---
-        # Use the state potentially modified by tools
-        updated_order_from_tools = current_process_order_state['order']
-
-        # Update history for Gradio display
-        updated_history_for_gradio = current_session_history[:] # Start with original history for the turn
-        updated_history_for_gradio.append({'role': 'user', 'content': user_input_text})
-        # We might want to include tool interactions in history for debugging, but maybe not for user display
-        # For now, just add the final assistant response
-        updated_history_for_gradio.append({'role': 'assistant', 'content': agent_response_text})
-
-        return agent_response_text, updated_history_for_gradio, updated_order_from_tools
-
-    except Exception as e:
-        logger.exception(f"Critical error in process_order: {str(e)}")
-        error_message = "I'm sorry, an unexpected error occurred during processing. Please try again later."
-        # Return original state on critical error
-        safe_history = current_session_history[:]
-        safe_history.append({'role': 'user', 'content': user_input_text})
-        safe_history.append({'role': 'assistant', 'content': error_message})
-        return error_message, safe_history, current_session_order
-
 # %% id="YQIgKJOeIE5q"
 # Define retryable exceptions for Cartesia if known, otherwise use generic ones
 # Example: CARTESIA_RETRYABLE_EXCEPTIONS = (cartesia.errors.ServerError, cartesia.errors.RateLimitError, ConnectionError)
 # Using generic exceptions for now as specific Cartesia ones aren't known here.
 CARTESIA_RETRYABLE_EXCEPTIONS = (ConnectionError, TimeoutError) # Add more specific Cartesia errors if documented
+
 
 @tenacity_retry(
     stop=stop_after_attempt(3),
@@ -831,6 +791,7 @@ def get_voice_audio(text_to_speak: str) -> bytes | None:
     """Calls Cartesia API synchronously to synthesize speech and returns WAV bytes."""
     global cartesia_client, CARTESIA_VOICE_ID # Access the global client and voice ID
 
+
     if not text_to_speak or not text_to_speak.strip():
         logger.warning("get_voice_audio received empty text.")
         return None
@@ -838,13 +799,16 @@ def get_voice_audio(text_to_speak: str) -> bytes | None:
          logger.error("Cartesia client or voice ID not initialized, cannot generate audio.")
          return None
 
+
     try:
         # Replace "MOK 5-ha" with "Moksha" for pronunciation in TTS
         text_for_tts = re.sub(r'MOK 5-ha', 'Moksha', text_to_speak, flags=re.IGNORECASE)
         if text_for_tts != text_to_speak:
             logger.info("Applied 'MOK 5-ha' → 'Moksha' pronunciation for TTS.")
 
+
         logger.info(f"Requesting TTS from Cartesia (Voice ID: {CARTESIA_VOICE_ID}) for: '{text_for_tts[:50]}...'")
+
 
         # --- Check Cartesia Documentation for the exact method call ---
         # This is a plausible synchronous implementation pattern:
@@ -862,16 +826,20 @@ def get_voice_audio(text_to_speak: str) -> bytes | None:
             },
         )
 
+
         # Concatenate chunks from the generator for a blocking result
         audio_data = b"".join(chunk for chunk in audio_generator)
         # --- End of section requiring Cartesia documentation check ---
+
 
         if not audio_data:
             logger.warning("Cartesia TTS returned empty audio data.")
             return None
 
+
         logger.info(f"Received {len(audio_data)} bytes of WAV audio data from Cartesia.")
         return audio_data
+
 
     # Catch specific Cartesia errors if they exist and are imported
     # except cartesia.errors.CartesiaError as e:
@@ -882,8 +850,7 @@ def get_voice_audio(text_to_speak: str) -> bytes | None:
         logger.exception(f"Unexpected error generating voice audio with Cartesia: {e}")
         return None
 
-
-# %% [markdown] id="5rsFNoUSIYjc"
+# %% id="5rsFNoUSIYjc"
 # # Gradio Interface Implementation
 
 # %% id="UYT5yCeG1iBT" outputId="c7387870-329d-4c76-dab3-793978de5a35"
@@ -1018,7 +985,7 @@ def handle_gradio_input(
     logger.debug(f"Received session order state (len {len(session_order_state)}): {session_order_state}")
 
     # Call text processing logic first
-    response_text, updated_history, updated_order = process_order(
+    response_text, updated_history, updated_history_for_gradio, updated_order, _ = process_order(
         user_input,
         session_history_state,
         session_order_state
@@ -1056,8 +1023,8 @@ def launch_bartender_interface():
     theme = gr.themes.Citrus()
 
     with gr.Blocks(theme=synthwave_theme) as demo:
-        gr.Markdown("# MOK 5-ha Bartending Agent 🍹")
-        gr.Markdown("Welcome to MOK 5-ha! Ask me for a drink or check your order.")
+        gr.Markdown("# MOK 5-ha - Meet Maya the Bartender 🍹")
+        gr.Markdown("Welcome to MOK 5-ha! I'm Maya, your virtual bartender. Ask me for a drink or check your order.")
 
         # --- Define Session State Variables ---
         history_state = gr.State([])
@@ -1117,7 +1084,7 @@ def launch_bartender_interface():
 
 
 # %% [markdown] id="OjZFOOFpItNX"
-# # Run the Bartending Agent 🏃‍♂️
+# # Run the Bartending Agent 🍹👋
 
 # %% id="BBPtIMysHwnz" outputId="90990cb8-1f04-487a-8d71-4efbd62b8737"
 # Launch the interface when this cell is executed
