@@ -284,7 +284,10 @@ def generate_augmented_response(query_text, retrieved_documents):
     
     # Call Gemini API for generation
     try:
-        model = genai.GenerativeModel('gemini-2.0-flash')
+        genai.configure(api_key=GEMINI_API_KEY)
+        GEMINI_MODEL_VERSION = os.getenv("GEMINI_MODEL_VERSION", "gemini-2.5-flash-preview-04-17")
+        print(f"Using Gemini model: {GEMINI_MODEL_VERSION}")
+        model = genai.GenerativeModel(GEMINI_MODEL_VERSION)
         response = model.generate_content(prompt)
         
         # Return the generated text
@@ -328,17 +331,13 @@ except Exception as e:
 @tool
 def get_menu() -> str:
     """Provide the latest up-to-date menu."""
-    # Note that this is just hard-coded text, but you could connect this to a live stock
-    # database, or you could use Gemini's multi-modal capabilities and take live photos of
-    # your cafe's chalk menu or the products on the counter and assmble them into an input.
-
     return """
     MENU:
     Cocktails with Liquor:
     Daiquiri - $10.00
     Martini - $13.00
     Long Island - $12.00
-    Old Fashioned - $12.00
+    Old Fashioned - $12.00 
     Negroni - $11.00
     Cosmopolitan - $12.00
     Manhattan - $12.00
@@ -356,15 +355,67 @@ def get_menu() -> str:
 
     Modifiers:
     Liquor Options: Vodka, Tequila, Gin, Whiskey, Rum, Brandy; Default option: Vodka
-    Special requests: any reasonable modification that does not involve items not on the menu, for example: 'shaken', 'stirred', 'neat', 'dry', etc.
+    Special requests: 'shaken', 'stirred', 'neat', 'dry', 'dirty', 'perfect', 'on the rocks', 'with a chaser'
+    
+    Drink Term Explanations:
+    'neat' - No ice, straight from the bottle
+    'on the rocks' - Served with ice
+    'dry' - Less vermouth (for martinis)
+    'dirty' - With olive juice (for martinis)
+    'perfect' - Equal parts dry and sweet vermouth
+    'chaser' - Separate non-alcoholic drink to follow
+    
+    Preference Guide:
+    'sobering' - Non-alcoholic options when you want to stay clear-headed
+    'classy' - Sophisticated, elegant drinks for refined tastes
+    'fruity' - Sweet, refreshing drinks with fruit flavors
+    'strong' - Higher alcohol content for experienced drinkers
+    'burning' - Intense sensation with high alcohol content, often spirits like whiskey
+    """
 
-    “neat” means no ice, straight from the bottle.
-    “on the rocks” means served with ice.
-    “dry” is used for martinis to specify less vermouth.
-    “dirty” means adding olive juice to a martini.
-    “perfect” is a 50/50 mix of dry and sweet vermouth, often for a Manhattan.
-    “Chaser” means a separate drink to follow, typically non-alcoholic.
-  """
+@tool
+def get_recommendation(preference: str) -> str:
+    """Recommends drinks based on customer preference.
+    
+    Args:
+        preference: Customer's drink preference (e.g., 'classy', 'strong', 'fruity', 'sobering', 'burning')
+        
+    Returns:
+        Recommended drinks matching the preference
+    """
+    preferences_map = {
+        "sobering": {
+            "drinks": ["Water", "Iced Tea", "Lemonade", "Soda"],
+            "description": "Here are some excellent non-alcoholic options to keep you refreshed and clear-headed"
+        },
+        "classy": {
+            "drinks": ["Martini", "Old Fashioned", "Manhattan", "Negroni"],
+            "description": "These sophisticated classics have stood the test of time for the discerning palate"
+        },
+        "fruity": {
+            "drinks": ["Daiquiri", "Cosmopolitan", "Lemonade"],
+            "description": "These drinks offer a perfect balance of sweetness and refreshing fruit flavors"
+        },
+        "strong": {
+            "drinks": ["Long Island", "Old Fashioned", "Negroni", "Whiskey (neat)"],
+            "description": "These potent options pack a punch with higher alcohol content"
+        },
+        "burning": {
+            "drinks": ["Whiskey (neat)", "Tequila (neat)", "Rum (neat)"],
+            "description": "These spirits deliver that characteristic burn when sipped straight"
+        }
+    }
+    
+    preference = preference.lower()
+    
+    if preference in preferences_map:
+        rec = preferences_map[preference]
+        drinks_list = ", ".join(rec["drinks"])
+        return f"{rec['description']}: {drinks_list}"
+    else:
+        # If preference not recognized, provide general recommendations
+        popular_drinks = "Martini, Daiquiri, Old Fashioned, and IPA"
+        return f"I'm not familiar with that specific preference, but some of our most popular drinks are: {popular_drinks}"
 
 # --- Tenacity retry decorator for _call_gemini_api ---
 # ... (keep the @tenacity_retry decorator as it was) ...
@@ -432,92 +483,135 @@ def _parse_menu_items(menu_str: str) -> Dict[str, float]:
     return items
 
 @tool
-def add_to_order(item_name: str, quantity: int = 1) -> str:
-    """
-    Adds the specified quantity of an item to the customer's order.
-    Use this AFTER verifying the item is on the menu.
+def add_to_order(item_name: str, modifiers: list[str] = None, quantity: int = 1) -> str:
+    """Adds the specified drink to the customer's order, including any modifiers.
+    
     Args:
-        item_name: The exact name of the item from the menu.
+        item_name: The name of the drink to add to the order
+        modifiers: Optional list of modifiers (e.g., 'neat', 'on the rocks', specific liquor)
         quantity: The number of this item to add (defaults to 1).
+    
+    Returns:
+      A confirmation message with the updated order.
     """
-    global current_process_order_state # Use global to access state within this call
-
-    menu_str = get_menu.invoke({}) # Get the current menu # Get the current menu
+    global current_process_order_state
+    
+    if modifiers is None:
+        modifiers = []
+    
+    menu_str = get_menu.invoke({}) 
     menu_items = _parse_menu_items(menu_str)
     item_lower = item_name.lower()
-
+    
     if item_lower in menu_items:
         price = menu_items[item_lower]
+        modifier_str = ", ".join(modifiers) if modifiers else "no modifiers"
+        
         for _ in range(quantity):
-            current_process_order_state['order'].append({"name": item_name, "price": price}) # Modify the state directly
-        logger.info(f"Tool: Added {quantity} x '{item_name}' to order.")
-        return f"Successfully added {quantity} x {item_name} to the order."
+            current_process_order_state['order'].append({
+                "name": item_name, 
+                "price": price,
+                "modifiers": modifier_str
+            })
+        
+        logger.info(f"Tool: Added {quantity} x '{item_name}' ({modifier_str}) to order.")
+        return f"Successfully added {quantity} x {item_name} ({modifier_str}) to the order."
     else:
         logger.warning(f"Tool: Attempted to add item '{item_name}' not found in parsed menu.")
-        # Try a fuzzy match maybe? For now, return error.
-        # Consider listing similar items if needed.
         return f"Error: Item '{item_name}' could not be found on the current menu. Please verify the item name."
 
 @tool
-def clear_order() -> str:
-    """Removes all items from the current order."""
+def confirm_order() -> str:
+    """Displays the current order to the user and asks for confirmation.
+    The user's response will be processed in the next turn.
+    """
     global current_process_order_state
-    current_process_order_state['order'] = [] # Clear the state
-    logger.info("Tool: Cleared order.")
-    return "The order has been cleared."
+    order_list = current_process_order_state['order']
+    
+    if not order_list:
+        return "There is nothing in the order to confirm. Please add items first."
+    
+    # Enhanced order display including modifiers
+    order_details = []
+    for item in order_list:
+        if "modifiers" in item and item["modifiers"] != "no modifiers":
+            order_details.append(f"- {item['name']} with {item['modifiers']} (${item['price']:.2f})")
+        else:
+            order_details.append(f"- {item['name']} (${item['price']:.2f})")
+    
+    order_text = "\n".join(order_details)
+    total = sum(item['price'] for item in order_list)
+    
+    confirmation_request = f"Here is your current order:\n{order_text}\nTotal: ${total:.2f}\n\nIs this correct? You can ask to add/remove items or proceed to place the order."
+    logger.info("Tool: Generated order confirmation request with modifiers for user.")
+    
+    return confirmation_request
 
 @tool
 def get_order() -> str:
     """Returns the current list of items in the order for the agent to see."""
     global current_process_order_state
     order_list = current_process_order_state['order']
+    
     if not order_list:
         return "The order is currently empty."
-    order_details = "\n".join([f"- {item['name']} (${item['price']:.2f})" for item in order_list])
+    
+    # Enhanced order display including modifiers
+    order_details = []
+    for item in order_list:
+        if "modifiers" in item and item["modifiers"] != "no modifiers":
+            order_details.append(f"- {item['name']} with {item['modifiers']} (${item['price']:.2f})")
+        else:
+            order_details.append(f"- {item['name']} (${item['price']:.2f})")
+    
+    order_text = "\n".join(order_details)
     total = sum(item['price'] for item in order_list)
-    return f"Current Order:\n{order_details}\nTotal: ${total:.2f}"
+    
+    return f"Current Order:\n{order_text}\nTotal: ${total:.2f}"
 
 @tool
-def confirm_order() -> str:
+def clear_order() -> str:
+    """Removes all items from the user's order.
+    
+    Returns:
+        Confirmation message that the order has been cleared.
     """
-    Displays the current order to the user and asks for confirmation.
-    The user's response will be processed in the next turn.
-    """
-    global current_process_order_state
-    order_list = current_process_order_state['order']
-    if not order_list:
-        return "There is nothing in the order to confirm. Please add items first."
-
-    order_details = "\n".join([f"- {item['name']} (${item['price']:.2f})" for item in order_list])
-    total = sum(item['price'] for item in order_list)
-    confirmation_request = f"Here is your current order:\n{order_details}\nTotal: ${total:.2f}\n\nIs this correct? You can ask to add/remove items or proceed to place the order."
-    logger.info("Tool: Generated order confirmation request for user.")
-    # This tool doesn't actually *place* the order, it just prepares the text for the LLM to relay
-    return confirmation_request # The LLM should incorporate this text into its response to the user
+    return "Your order has been cleared."
 
 @tool
 def place_order() -> str:
     """Finalizes and places the customer's confirmed order."""
     global current_process_order_state
     order_list = current_process_order_state['order']
+    
     if not order_list:
         return "Cannot place an empty order. Please add items first."
-
-    # In a real system, this would interact with a POS or backend API.
-    # Here, we'll just log it and modify the state.
-    order_details = ", ".join([item['name'] for item in order_list])
+    
+    # Enhanced order details including modifiers
+    order_details = []
+    for item in order_list:
+        if "modifiers" in item and item["modifiers"] != "no modifiers":
+            order_details.append(f"{item['name']} with {item['modifiers']}")
+        else:
+            order_details.append(item['name'])
+    
+    order_text = ", ".join(order_details)
     total = sum(item['price'] for item in order_list)
-    logger.info(f"Tool: Placing order: [{order_details}], Total: ${total:.2f}")
-
+    
+    # Simulate random preparation time between 2-8 minutes
+    prep_time = random.randint(2, 8)
+    
+    logger.info(f"Tool: Placing order: [{order_text}], Total: ${total:.2f}, ETA: {prep_time} minutes")
+    
     # Mark order as finished (though 'finished' isn't explicitly in Gradio state)
     # We can clear the order after placing it for this simple setup
-    current_process_order_state['order'] = [] # Clear order after placing
-    current_process_order_state['finished'] = True # Set a flag if needed later
-
-    return f"Order placed successfully! Your items ({order_details}) totalling ${total:.2f} will be ready shortly."
+    current_process_order_state['order'] = []  # Clear order after placing
+    current_process_order_state['finished'] = True  # Set a flag if needed later
+    
+    return f"Order placed successfully! Your items ({order_text}) totalling ${total:.2f} will be ready in approximately {prep_time} minutes."
 
 # List of all tools for the LLM
-tools = [get_menu, add_to_order, clear_order, get_order, confirm_order, place_order]
+tools = [get_menu, add_to_order, clear_order, get_order, confirm_order, place_order, get_recommendation]
 
 # %% id="P-mA2edJXlkb"
 # Model initialization
@@ -1023,7 +1117,7 @@ def launch_bartender_interface():
 
 
 # %% [markdown] id="OjZFOOFpItNX"
-# # Run the Bartending Agent 🚀
+# # Run the Bartending Agent 🏃‍♂️
 
 # %% id="BBPtIMysHwnz" outputId="90990cb8-1f04-487a-8d71-4efbd62b8737"
 # Launch the interface when this cell is executed
