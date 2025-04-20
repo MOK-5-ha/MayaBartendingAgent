@@ -1507,6 +1507,74 @@ def get_voice_audio(text_to_speak: str) -> bytes | None:
 # *Note: Add image embed of AI studio screenshot*
 
 # %%
+# Creating our own custom synthwave '84 inspired theme
+
+# Synthwave '84 Inspired Theme Definition
+# Color Palette
+synth_background_dark = "#2a2139"
+synth_background_med = "#3b3269" 
+synth_text = "#f9f7f3"
+synth_pink = "#ff79c6"
+synth_cyan = "#80ffea"
+synth_purple = "#bd93f9"
+synth_orange = "#ffb86c"
+synth_yellow = "#f1fa8c"
+
+# Font
+synth_font = fonts.GoogleFont("Roboto Mono")
+
+# Create the theme using .set()
+synthwave_theme = gr.themes.Default(
+    font=synth_font,
+    font_mono=synth_font,
+).set(
+    # Backgrounds
+    body_background_fill=synth_background_dark,
+    background_fill_primary=synth_background_dark,
+    background_fill_secondary=synth_background_dark, 
+    block_background_fill=synth_background_dark,     
+
+    # Text
+    body_text_color=synth_text,
+    error_text_color=synth_pink,
+    input_text_color="#000000",  # Set input text to black for better readability
+
+    # Borders
+    border_color_primary=synth_purple,
+    border_color_accent=synth_cyan,
+    block_border_width="1px",
+    block_border_color=synth_purple,
+
+    # Buttons
+    button_primary_background_fill=synth_purple,
+    button_primary_background_fill_hover=synth_cyan,
+    button_primary_text_color=synth_background_dark,
+    button_secondary_background_fill=synth_cyan,
+    button_secondary_background_fill_hover=synth_pink,
+    button_secondary_text_color=synth_background_dark,
+    button_cancel_background_fill=synth_orange,
+    button_cancel_text_color=synth_background_dark,
+
+    # Inputs / Sliders / etc.
+    input_background_fill=synth_background_dark, 
+    input_border_color=synth_cyan,
+    input_placeholder_color=colors.gray.c500,
+    slider_color=synth_pink,
+
+    # Block appearance
+    block_label_background_fill=synth_background_med, 
+    block_label_text_color=synth_text,
+    block_title_text_color=synth_cyan,
+    block_radius=sizes.radius_md,
+    block_shadow="*shadow_drop_lg",
+
+    # Spacing
+    layout_gap=sizes.spacing_md,
+)
+
+print("Synthwave '84 inspired Gradio theme created (forcing dark block/input backgrounds).")
+
+# %%
 # Default avatar URL - fixed source for consistent experience
 default_avatar_url = "https://github.com/gen-ai-capstone-project-bartender-agent/MOK-5-ha/blob/main/assets/bartender_avatar_ai_studio.jpeg?raw=true"
 
@@ -1709,5 +1777,37 @@ launch_bartender_interface()
 # %% [markdown]
 # # Limitations
 #
-# - Maya will still pronounce symbols (e.g. *, =, etc.)
-# - 
+# **Technical**
+#
+# - **Limited Menu Parsing**: The menu parsing logic uses simple regex which may not handle complex menu formatting changes.
+#
+# - **Concurrent User Handling**: The global state variables (**current_process_order_state**, **conversation_state**, etc.) aren't designed for multiple concurrent users, making this implementation suitable only for single-user interactions.
+#
+# - **Fixed RAG Knowledge Base**: The small set of pre-defined documents for small talk limits Maya's conversational variety over extended interactions.
+#
+# - **Token Limits**: There's a 2048 token limit on responses, which might truncate very detailed explanations.
+#
+# - **Symbol Pronunciation**: Maya will still pronounce symbols (e.g. *, =, etc.)
+#
+# **Functional**
+#
+# - **Menu Modifications**: Users can't modify the menu (add specials, change prices) without code changes.
+#
+# - **Order Editing**: While orders can be cleared completely, there's no built-in way to remove specific items from an order.
+#
+# - **Time Awareness**: Maya doesn't track real time, so references to time of day or "happy hour" aren't connected to actual time.
+#
+# - **No Memory Between Sessions**: Order history and conversation state are lost when the application restarts.
+#
+# - **Limited Context Window**: Maya may lose track of earlier parts of long conversations due to the LLM's context window limitations.
+#
+# - **Payment Processing**: No real way for Maya to actually process payments.
+#
+# **UI**
+#
+# - **Mobile Responsiveness**: The interface might not scale well on very small screens.
+# - **Audio Playback**: If browser settings block autoplay, the voice responses might not work without user intervention.
+# - **No Speech Input**: While Maya can speak, she can't listen - the interface only accepts text input.
+# - **Single-Language Support**: Maya is currently English-only, without multilingual capabilities.
+#
+# These limitations are all manageable for a prototype bartender agent, and the core functionality of order taking, small talk, and philosophical conversation should work well within these constraints.
