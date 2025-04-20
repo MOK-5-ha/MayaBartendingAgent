@@ -159,9 +159,17 @@ except Exception as e:
 # %% [markdown]
 # # RAG Implementation 📚
 
+# %% [markdown]
+# This section implements the RAG (Retrieval Augmented Generation) component of our agent, which is crucial for enhancing their conversational abilities beyond basic drink ordering functionality.
+#
+# The function below is the foundation of the RAG system, as it is responsible for:
+#
+# - Converting text (either documents or user queries) into numerical vector representations using Google's embedding model
+# - Including error handling and retry logic to ensure robustness
+# - Allowing the agent to "understand" semantic meaning beyond just keywords
+
 # %% id="gemini_embedding_function"
 # Embedding function for RAG implementation
-
 @tenacity_retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
 def get_embedding(text, task_type="RETRIEVAL_DOCUMENT"):
     """Get embedding for a single text using Google Generative AI."""
@@ -184,9 +192,19 @@ def get_embedding(text, task_type="RETRIEVAL_DOCUMENT"):
         print(f"Error getting embedding: {e}")
         return None
 
-# %% id="faiss_setup"
-# Initialize FAISS and populate with documents
+# %% [markdown]
+# ## Initialize FAISS and populate with documents
+#
+# At this point in the RAG implementation, we are:
+#
+# - Creating a "personality library" for our agent with pre-written bartender responses
+# - Converting these responses into vector embeddings that can be searched
+# - Building a FAISS vector database (index) for efficient similarity searches
+# - These phrases represent the agent's "character voice" - philosophical, slightly witty, and conversational
+#
+# *Note: We would be using ChromaDB, however when testing it locally we ran into compiling issues. macOS' compiler doesn't support the latest version of ChromaDB. Thus, we swapped it out for an alternative: FAISS.*
 
+# %% id="faiss_setup"
 # Pre-defined example documents
 DOCUMENT1 = "It seems like a pleasant evening."
 DOCUMENT2 = "If there's one thing Bartending teaches you, it's patience."
@@ -205,7 +223,6 @@ print("Generating embeddings for documents...")
 document_embeddings = []
 valid_documents = []
 
-# Generate embeddings
 for i, doc in enumerate(documents):
     embedding = get_embedding(doc, task_type="RETRIEVAL_DOCUMENT")
     if embedding is not None:
@@ -225,6 +242,12 @@ index = faiss.IndexFlatL2(dimension)
 index.add(document_embeddings)
 
 print(f"Created FAISS index with {index.ntotal} vectors of dimension {dimension}")
+
+# %% [markdown]
+# This retrieval function:
+# - Takes what the user says and finds the most contextually similar pre-written responses
+# - Uses vector similarity to match user intent with appropriate responses
+# - Provides Maya with relevant conversational material based on context
 
 # %% id="retrieval_function"
 # Function to retrieve relevant documents using FAISS
@@ -248,13 +271,36 @@ def retrieve_relevant_passages(query_text, n_results=1):
     
     return retrieved_documents
 
+# %% [markdown]
+# ### Why This is Important For Our Agent
+#
+# This RAG implementation transforms our bartender from a simple drink-ordering bot into a more engaging conversational agent by:
+#
+# **Adding Personality**: The pre-defined responses give our agent a consistent voice and character
+#
+# **Supporting Small Talk**: Enables a 4-turn small talk cycle
+#
+# **Context-Awareness**: Helps our agent select responses that match the user's mood or conversational direction
+#
+# **Performance**: Retrieval is often faster than pure generation for common conversation patterns
+
+# %% [markdown]
+# ## Giving our Agent an Identity
+
+# %% [markdown]
+# Here is truly where our bartender comes to life. It represents the critical fusion point between retrieval (finding relevant content) and generation (creating personalized responses). By explicitly naming her and reinforcing her identity, users develop a connection with a consistent character rather than an abstract system.
+#
+# Naming the agent "Maya" is particularly significant. In many Eastern philosophical traditions, "Maya" can refer to the concept of illusion or the material world that veils ultimate reality. This ties beautifully with the bar's "Moksha" theme of liberation and enlightenment.
+#
+# The code doesn't just create a drink-ordering system but establishes a thematic framework that elevates the interaction. Maya isn't just serving drinks; she's offering moments of liberation and enlightenment, making each interaction potentially meaningful. We're ensuring she comes across as humble yet witty, creating a distinct personality that makes interactions feel more authentic and engaging.
+
 # %% id="augmented_generation"
 # Function for augmented generation using retrieved documents
 def generate_augmented_response(query_text, retrieved_documents):
     """Generate a response augmented with the retrieved documents."""
     query_oneline = query_text.replace("\n", " ")
 
-    # Prompt template for the bartender bot
+    # Prompt template for the bartender agent
     prompt = f"""You are Maya, the bartender at "MOK 5-ha". Your name is Maya.
     You are conversational and interact with customers using text from the reference passage included below.
     When asked about your name, ALWAYS respond that your name is Maya.
@@ -285,6 +331,21 @@ def generate_augmented_response(query_text, retrieved_documents):
         # Fallback to direct response without augmentation
         return "I'm Maya, your bartender at MOK 5-ha. I'm not sure how to respond to that. Can I get you something from the menu?"
 
+# %% [markdown]
+# ## RAG Pipeline
+#
+# The pipeline function is the crucial integration point in Maya's conversational architecture:
+#
+# **Bridges Retrieval and Generation**: Connects the vector database searching with the LLM response generation
+#
+# **Enables Contextual Responses**: Makes sure Maya's answers are grounded in relevant reference material
+#
+# **Creates a Unified Interface**: Provides a clean, simple API that the frontend UI can call without needing to understand the RAG complexity
+#
+# **Supports Error Resilience**: Ensures the conversation continues even if parts of the system encounter issues
+#
+# In the larger bartending agent system, this RAG pipeline is invoked during conversational turns, especially during small talk phases when Maya needs to respond in her characteristic voice rather than just processing drink orders.
+
 # %% id="rag_pipeline"
 # Complete RAG pipeline function
 def rag_pipeline(query_text):
@@ -314,6 +375,9 @@ try:
     print(f"RAG Response: {response}")
 except Exception as e:
     print(f"Error testing RAG pipeline: {e}")
+
+# %% [markdown]
+# # Tooling
 
 # %% id="Ng_t4TUIHwL7"
 @tool
@@ -361,6 +425,7 @@ def get_menu() -> str:
     'burning' - Intense sensation with high alcohol content, often spirits like whiskey
 """
 
+# %%
 @tool
 def get_recommendation(preference: str) -> str:
     """Recommends drinks based on customer preference.
@@ -406,6 +471,8 @@ def get_recommendation(preference: str) -> str:
         popular_drinks = "Martini, Daiquiri, Old Fashioned, and IPA"
         return f"I'm not familiar with that specific preference, but some of our most popular drinks are: {popular_drinks}"
 
+
+# %%
 # --- Tenacity retry decorator for _call_gemini_api ---
 @tenacity_retry(
     stop=stop_after_attempt(3),
@@ -427,8 +494,10 @@ def _call_gemini_api(prompt_content: List[Dict], config: Dict) -> genai.types.Ge
     return response
 
 
-# --- LangGraph-style System Prompt ---
+# %% [markdown]
+# ## LangGraph-style System Prompt
 
+# %%
 MAYABARTENDERBOT_SYSINT = (
     "You are Maya, a highly-skilled bartender at 'MOK 5-ha Bar'. MOK 5-ha means Moksha, representing spiritual liberation.\n\n"
     "You have these qualities and abilities:\n"
@@ -478,6 +547,30 @@ PHASE_PROMPTS = {
     'reorder_prompt': "You are Maya, a friendly bartender at MOK 5-ha. The customer has been chatting for a while. Politely ask if they would like to order anything else from the menu."
 }
 
+
+# %% [markdown]
+# ## Phase Tracking: 
+#
+# The code tracks which "phase" of the conversation we're in:
+#
+# - **greeting**: Initial greeting when customer arrives
+# - **order_taking**: Actively taking an order
+# - **small_talk**: Casual conversation between orders
+# - **reorder_prompt**: Asking if the customer wants to order anything else
+#
+# This is what allows Maya to maintain a natural conversation rhythm, where she:
+#
+# - Takes initial orders
+# - Engages in 4 turns of small talk
+# - Politely asks if the customer would like to order something else
+# - Returns to small talk or order-taking based on the customer's response
+#
+# Without this mechanism, Maya would either:
+#
+# - Never prompt for additional orders
+# - Constantly ask about additional orders after every interaction
+
+# %%
 # Helper function to determine the next conversation phase
 def determine_next_phase(current_state, order_placed):
     """Determine the next conversation phase based on current state and whether an order was placed."""
@@ -512,6 +605,11 @@ def determine_next_phase(current_state, order_placed):
     # Default fallback
     return 'small_talk'  
 
+
+# %% [markdown]
+#
+
+# %%
 def process_order(
     user_input_text: str,
     current_session_history: List[Dict[str, str]],
@@ -770,6 +868,7 @@ def process_order(
     conversation_state['phase'] = next_phase
     
     logger.info(f"Conversation state: {conversation_state}")
+
 
 # %% id="jMM9jggIVHVV"
 # --- Tool Definitions ---
