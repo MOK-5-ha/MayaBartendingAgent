@@ -19,13 +19,13 @@
 # ## Use Case: 📝
 
 # %% [markdown]
-# ## How it Works: 🤖
+# ## How it Works: 🤔
 
 # %% [markdown]
 # ## Capabilities Used: 📈
 
 # %% [markdown] id="0TCdSlfrF8Xx"
-# # Setup and Installation 📦
+# # Setup and Installation 🛠️
 
 # %% [markdown]
 # ## Installing required packages
@@ -67,10 +67,10 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(level
 logger = logging.getLogger(__name__)
 
 # %% [markdown]
-# # API Key Setup (WIP) 🤖
+# # API Key Setup (WIP) 🤔
 
 # %% [markdown]
-# ## API Key Setup (WIP) 🤖
+# ## API Key Setup (WIP) 🤔
 
 # %% [markdown] id="QyccDKQIGxxT"
 # # Bartending Agent Implementation 🤖
@@ -257,6 +257,10 @@ def generate_augmented_response(query_text, retrieved_documents):
     prompt = f"""You are Maya, the bartender at "MOK 5-ha". Your name is Maya.
     You are conversational and interact with customers using text from the reference passage included below.
     When asked about your name, ALWAYS respond that your name is Maya.
+    
+    The bar's name "MOK 5-ha" is pronounced "Moksha" which represents liberation from the cycle of rebirth and union with the divine in Eastern philosophy.
+    When customers ask about the bar, explain this philosophical theme - that good drinks can help people find temporary liberation from their daily problems, just as spiritual enlightenment frees the soul from worldly attachments.
+    
     Be sure to respond in a complete sentence while maintaining a modest and humorous tone. 
     If the passage is irrelevant to the answer, you may ignore it.
     
@@ -427,14 +431,15 @@ def _call_gemini_api(prompt_content: List[Dict], config: Dict) -> genai.types.Ge
 # in this specific file structure. The LLM will receive these instructions, but
 # the surrounding code doesn't execute LangGraph tools.)
 MAYABARTENDERBOT_SYSINT = (
-    "You are Maya, a friendly and knowledgeable virtual bartender at MOK 5-ha. Your name is Maya. " 
-    "When someone asks your name, you must respond with 'My name is Maya' clearly and directly. " 
-    "Never suggest alternative names or deny that Maya is your name. " 
-    "Always introduce yourself as Maya when greeting customers. " 
-    "A human will talk to you about available products and you will answer questions about menu items and their prices "
-    "(you can chat about drinks and their history, but avoid non-bar-related topics). "
+    "You are Maya, a friendly and knowledgeable virtual bartender at MOK 5-ha. " 
+    "Your primary responsibility is to take drink orders and provide excellent service. "
     "The customer will place an order for 1 or more items from the menu, which you will structure "
     "and send to the ordering system after confirming the order with the human. "
+    "\n\n"
+    "IMPORTANT: ALWAYS use the add_to_order tool when a customer requests a drink. "
+    "For example, if they ask for 'two martinis on the rocks', immediately call add_to_order(item_name='Martini', modifiers=['on the rocks'], quantity=2). "
+    "Never just acknowledge an order - you must use the tool to add it to the system. "
+    "Even for conversational-sounding requests like 'I'd like a...', 'Can I get...', or 'I'll have...' - always use add_to_order. "
     "\n\n"
     "Add items to the customer's order with add_to_order, and reset the order with clear_order. "
     "To see the contents of the order so far, call get_order (this is shown to you, not the user). "
@@ -454,6 +459,63 @@ MAYABARTENDERBOT_SYSINT = (
 # Global variable to hold state accessible by tools within a single process_order call
 current_process_order_state = {'order': [], 'finished': False}
 
+# Initialize global state for conversation tracking
+conversation_state = {
+    'turn_count': 0,
+    'phase': 'greeting',  # 'greeting', 'order_taking', 'small_talk', 'reorder_prompt'
+    'last_order_time': 0,  # Track when the last order was placed
+    'small_talk_count': 0  # Counter for small talk turns
+}
+
+# Add persistent order history to track all items across the session
+order_history = {
+    'items': [],       # All items ordered in this session
+    'total_cost': 0.0, # Running total of all orders
+    'paid': False      # Whether bill has been paid
+}
+
+# Phase-specific prompts
+PHASE_PROMPTS = {
+    'greeting': "You are Maya, a friendly bartender at MOK 5-ha. Start by greeting the customer and ask what they would like to order. Be warm, inviting, and concise.",
+    'order_taking': "You are Maya, a friendly bartender at MOK 5-ha. Focus on taking the customer's order professionally. Ask questions to clarify their drink preferences if needed.",
+    'small_talk': "You are Maya, a friendly bartender at MOK 5-ha. Engage in casual conversation with the customer. Ask them about their day, interests, or share a brief anecdote. Keep the conversation light and friendly.",
+    'reorder_prompt': "You are Maya, a friendly bartender at MOK 5-ha. The customer has been chatting for a while. Politely ask if they would like to order anything else from the menu."
+}
+
+# Helper function to determine the next conversation phase
+def determine_next_phase(current_state, order_placed):
+    """Determine the next conversation phase based on current state and whether an order was placed."""
+    phase = current_state['phase']
+    small_talk_count = current_state['small_talk_count']
+    
+    # If this is the first interaction, move from greeting to order taking
+    if phase == 'greeting':
+        return 'order_taking'
+    
+    # If an order was just placed, transition to small talk
+    if order_placed:
+        current_state['small_talk_count'] = 0  # Reset small talk counter after an order
+        return 'small_talk'
+    
+    # If we're taking an order, stay in that phase
+    if phase == 'order_taking':
+        return 'order_taking'
+    
+    # If we're in small talk phase
+    if phase == 'small_talk':
+        if small_talk_count >= 4:  # After 4 turns of small talk
+            return 'reorder_prompt'  # Ask if they want to order anything else
+        return 'small_talk'  # Continue small talk
+    
+    # If we just prompted for a reorder
+    if phase == 'reorder_prompt':
+        # Go back to small talk regardless of whether they ordered
+        current_state['small_talk_count'] = 0  # Reset small talk counter
+        return 'small_talk'
+    
+    # Default fallback
+    return 'small_talk'
+
 def process_order(
     user_input_text: str,
     current_session_history: List[Dict[str, str]],
@@ -462,7 +524,7 @@ def process_order(
     """
     Processes user input using LangChain LLM with tool calling, updates state.
     """
-    global menu, llm, current_process_order_state # Access global LLM and menu dict
+    global menu, llm, current_process_order_state, conversation_state # Access global LLM, menu dict and conversation state
 
     if not user_input_text:
         logger.warning("Received empty user input.")
@@ -474,11 +536,107 @@ def process_order(
     # A better approach in a real app might involve classes or context managers.
     current_process_order_state['order'] = current_session_order[:] # Copy list
     current_process_order_state['finished'] = False # Reset finished flag for this turn
+    
+    # Detect if this is the first interaction (empty history)
+    is_first_interaction = len(current_session_history) == 0
+    if is_first_interaction:
+        conversation_state = {
+            'turn_count': 0,
+            'phase': 'greeting',
+            'last_order_time': 0,
+            'small_talk_count': 0
+        }
+
+    # Helper function for fuzzy intent detection
+    def detect_order_inquiry(user_input: str) -> dict:
+        """
+        Detects if the user is asking about their order or bill in conversational ways.
+        Returns a dict with intent and confidence.
+        """
+        user_text = user_input.lower()
+        
+        # Intent patterns with keywords
+        intent_patterns = {
+            'show_order': [
+                'show my order', 'what did i order', 'what have i ordered', 
+                "what's in my order", 'what is in my order', 'my current order',
+                'order so far', 'view my order', 'see my order'
+            ],
+            'get_bill': [
+                'bill', 'check please', 'check, please', 'tab', 'pay', 'total', 
+                'how much', 'what do i owe', 'my total', 'my bill', 'the total', 
+                'the bill', "what's the damage", "what's the total", 'what is the total',
+                'how much is my bill', 'how much do i owe', "what's my tab",
+                'what is my tab', "what's my total", 'what is my total'
+            ],
+            'pay_bill': [
+                'pay my bill', 'pay the bill', 'pay my tab', 'pay the tab', 
+                "i'll pay now", 'pay now', 'settle my bill', 'settle the bill', 
+                'settle up', 'cash out', 'close my tab', 'close the tab'
+            ]
+        }
+        
+        # Check for matches
+        matched_intent = None
+        highest_score = 0
+        
+        for intent, patterns in intent_patterns.items():
+            for pattern in patterns:
+                if pattern in user_text:
+                    # Direct match has highest priority
+                    return {'intent': intent, 'confidence': 1.0}
+            
+            # Check for partial word matches
+            pattern_words = set()
+            for pattern in patterns:
+                pattern_words.update(pattern.split())
+            
+            # Count matching words
+            matching_words = sum(1 for word in pattern_words if word in user_text.split())
+            if matching_words > 0:
+                score = matching_words / len(user_text.split())
+                if score > highest_score:
+                    highest_score = score
+                    matched_intent = intent
+        
+        if matched_intent and highest_score >= 0.3:  # Threshold for confidence
+            return {'intent': matched_intent, 'confidence': highest_score}
+        else:
+            return {'intent': None, 'confidence': 0}
+
+    # --- Check for order-related intent before processing ---
+    intent_match = detect_order_inquiry(user_input_text)
+    if intent_match['intent'] and intent_match['confidence'] >= 0.3:
+        logger.info(f"Detected order intent: {intent_match['intent']} with confidence {intent_match['confidence']}")
+        
+        # Directly call the appropriate tool based on intent
+        if intent_match['intent'] == 'show_order':
+            tool_result = get_order.invoke({})
+            agent_response_text = f"Here's your current order:\n{tool_result}"
+        elif intent_match['intent'] == 'get_bill':
+            tool_result = get_bill.invoke({})
+            agent_response_text = f"Here's your bill:\n{tool_result}"
+        elif intent_match['intent'] == 'pay_bill':
+            tool_result = pay_bill.invoke({})
+            agent_response_text = tool_result
+            
+        # Update history for Gradio display
+        updated_history_for_gradio = current_session_history[:] # Start with original history for the turn
+        updated_history_for_gradio.append({'role': 'user', 'content': user_input_text})
+        updated_history_for_gradio.append({'role': 'assistant', 'content': agent_response_text})
+            
+        return agent_response_text, updated_history_for_gradio, updated_history_for_gradio, current_session_order, None
 
     # Prepare message history for LangChain model
     messages = []
+    
+    # Select the appropriate system prompt based on the conversation phase
+    phase_prompt = PHASE_PROMPTS.get(conversation_state['phase'], MAYABARTENDERBOT_SYSINT)
+    combined_prompt = f"{phase_prompt}\n\n{MAYABARTENDERBOT_SYSINT}"
+    
     # Add System Prompt
-    messages.append(SystemMessage(content=MAYABARTENDERBOT_SYSINT))
+    messages.append(SystemMessage(content=combined_prompt))
+    
     # Add Menu (as system/context info - could also be retrieved via tool call if user asks)
     # This explicitly calls the tool using the correct interface, providing a dummy input(the empty dictionary) that satisfies the method signature, even though the get_menu function itself doesn't use it.
     messages.append(SystemMessage(content="\nHere is the menu:\n" + get_menu.invoke({}))) # Use invoke()
@@ -499,7 +657,7 @@ def process_order(
 
     logger.info(f"Processing user input for session: {user_input_text}")
     # logger.debug(f"Messages sent to LLM: {messages}")
-
+    
     try:
         # --- LLM Interaction Loop (Handles Tool Calls) ---
         while True:
@@ -598,6 +756,27 @@ def process_order(
         safe_history.append({'role': 'assistant', 'content': error_message})
         return error_message, safe_history, safe_history, current_session_order, None
 
+    # Now set the updated response and call RAG if appropriate
+    response = ""
+    
+    # See if the system has changed the state -- did we place an order?
+    order_placed = current_process_order_state['finished']
+    
+    # Update the conversation state for the next turn
+    conversation_state['turn_count'] += 1
+    if order_placed:
+        conversation_state['last_order_time'] = conversation_state['turn_count']
+    
+    # If we're in small talk phase, increment counter
+    if conversation_state['phase'] == 'small_talk':
+        conversation_state['small_talk_count'] += 1
+    
+    # Determine the next phase
+    next_phase = determine_next_phase(conversation_state, order_placed)
+    conversation_state['phase'] = next_phase
+    
+    logger.info(f"Conversation state: {conversation_state}")
+
 # %% id="jMM9jggIVHVV"
 # --- Tool Definitions ---
 
@@ -628,7 +807,7 @@ def add_to_order(item_name: str, modifiers: list[str] = None, quantity: int = 1)
     Returns:
       A confirmation message with the updated order.
     """
-    global current_process_order_state
+    global current_process_order_state, order_history
     
     if modifiers is None:
         modifiers = []
@@ -642,13 +821,21 @@ def add_to_order(item_name: str, modifiers: list[str] = None, quantity: int = 1)
         modifier_str = ", ".join(modifiers) if modifiers else "no modifiers"
         
         for _ in range(quantity):
-            current_process_order_state['order'].append({
+            # Create the item once to ensure both states have the same reference
+            item = {
                 "name": item_name, 
                 "price": price,
                 "modifiers": modifier_str
-            })
+            }
+            
+            # Add to current order state (for this session)
+            current_process_order_state['order'].append(item.copy())
+            
+            # Also add directly to order history (for persistent tracking)
+            order_history['items'].append(item.copy())
+            order_history['total_cost'] += price
         
-        logger.info(f"Tool: Added {quantity} x '{item_name}' ({modifier_str}) to order.")
+        logger.info(f"Tool: Added {quantity} x '{item_name}' ({modifier_str}) to order and history.")
         return f"Successfully added {quantity} x {item_name} ({modifier_str}) to the order."
     else:
         logger.warning(f"Tool: Attempted to add item '{item_name}' not found in parsed menu.")
@@ -715,7 +902,7 @@ def clear_order() -> str:
 @tool
 def place_order() -> str:
     """Finalizes and places the customer's confirmed order."""
-    global current_process_order_state
+    global current_process_order_state, order_history
     order_list = current_process_order_state['order']
     
     if not order_list:
@@ -723,11 +910,23 @@ def place_order() -> str:
     
     # Enhanced order details including modifiers
     order_details = []
+    current_order_cost = 0.0
+    
     for item in order_list:
+        # Add to running total
+        current_order_cost += item['price']
+        
+        # Add to history
+        order_history['items'].append(item.copy())
+        
+        # Format for display
         if "modifiers" in item and item["modifiers"] != "no modifiers":
             order_details.append(f"{item['name']} with {item['modifiers']}")
         else:
             order_details.append(item['name'])
+    
+    # Update the running total cost
+    order_history['total_cost'] += current_order_cost
     
     order_text = ", ".join(order_details)
     total = sum(item['price'] for item in order_list)
@@ -736,42 +935,90 @@ def place_order() -> str:
     prep_time = random.randint(2, 8)
     
     logger.info(f"Tool: Placing order: [{order_text}], Total: ${total:.2f}, ETA: {prep_time} minutes")
+    logger.info(f"Tool: Running order history total: ${order_history['total_cost']:.2f}")
     
     # Mark order as finished (though 'finished' isn't explicitly in Gradio state)
-    # We can clear the order after placing it for this simple setup
-    current_process_order_state['order'] = []  # Clear order after placing
+    # We no longer clear the entire order history, just this round's order
+    current_process_order_state['order'] = []  # Clear current order after placing
     current_process_order_state['finished'] = True  # Set a flag if needed later
     
     return f"Order placed successfully! Your items ({order_text}) totalling ${total:.2f} will be ready in approximately {prep_time} minutes."
 
+@tool
+def get_bill() -> str:
+    """Calculates the total bill for all items ordered in this session."""
+    global order_history
+    
+    if not order_history['items']:
+        return "You haven't ordered anything yet."
+    
+    # Format the bill with details
+    bill_details = []
+    for item in order_history['items']:
+        item_text = item['name']
+        if "modifiers" in item and item["modifiers"] != "no modifiers":
+            item_text += f" with {item['modifiers']}"
+        bill_details.append(f"{item_text}: ${item['price']:.2f}")
+    
+    bill_text = "\n".join(bill_details)
+    total = order_history['total_cost']
+    
+    return f"Your bill:\n{bill_text}\n\nTotal: ${total:.2f}"
+
+@tool
+def pay_bill() -> str:
+    """Mark the customer's bill as paid."""
+    global order_history
+    
+    if not order_history['items']:
+        return "You haven't ordered anything yet."
+    
+    if order_history['paid']:
+        return "Your bill has already been paid. Thank you!"
+    
+    total = order_history['total_cost']
+    order_history['paid'] = True
+    
+    # We could clear the history here or keep a record
+    # For this implementation, we'll keep the record but mark as paid
+    
+    return f"Thank you for your payment of ${total:.2f}! We hope you enjoyed your drinks at MOK 5-ha."
+
 # List of all tools for the LLM
-tools = [get_menu, add_to_order, clear_order, get_order, confirm_order, place_order, get_recommendation]
+tools = [get_menu, add_to_order, clear_order, get_order, confirm_order, place_order, get_recommendation, get_bill, pay_bill]
 
 # %% id="P-mA2edJXlkb"
 # Model initialization
+def initialize_llm():
+    """Initialize and return the LLM used for completion."""
+    try:
+        # Create configuration for google_genai
+        config = {
+            "temperature": 0.2,  # Lower the temperature to make the agent more reliable at executing tools
+            "top_p": 0.95,
+            "top_k": 0,
+            "max_output_tokens": 2048,
+        }
+        
+        # Initialize ChatGoogleGenerativeAI with the Gemini model
+        GEMINI_MODEL_VERSION = os.getenv("GEMINI_MODEL_VERSION", "gemini-2.5-flash-preview-04-17")
+        llm = ChatGoogleGenerativeAI(
+            model=GEMINI_MODEL_VERSION,
+            convert_system_message_to_human=True,
+            temperature=config["temperature"],
+            top_p=config["top_p"],
+            top_k=config["top_k"],
+            max_output_tokens=config["max_output_tokens"],
+            google_api_key=GEMINI_API_KEY
+        ).bind_tools(tools)  # Bind the tools to the LLM
+        
+        logger.info(f"Successfully initialized LangChain ChatGoogleGenerativeAI model bound with tools.")
+        return llm
+    except Exception as e:
+        logger.error(f"Error initializing LLM: {e}")
+        raise
 
-# With the LangChain setup:
-try:
-    # Ensure GEMINI_API_KEY is set (e.g., from .env file or input)
-    if not GEMINI_API_KEY:
-        raise ValueError("GEMINI_API_KEY not found.")
-
-    # Use ChatGoogleGenerativeAI and bind the tools
-    # Note: Use a model that supports tool calling well, like gemini-pro or newer flash/pro models
-    llm = ChatGoogleGenerativeAI(
-        model="gemini-2.5-flash-preview-04-17", # Using the correct required model as per user preference
-        temperature=0.7,
-        max_output_tokens=2048,
-        google_api_key=GEMINI_API_KEY
-    ).bind_tools(tools) # Bind the list of tool functions
-
-    logger.info(f"Successfully initialized LangChain ChatGoogleGenerativeAI model bound with tools.")
-
-except Exception as e:
-    logger.exception(f"Fatal: Failed to initialize LangChain Gemini model: {str(e)}")
-    raise RuntimeError(
-        f"Failed to initialize LangChain Gemini model. Check API key and model name."
-    ) from e
+llm = initialize_llm()
 
 # %% id="YQIgKJOeIE5q"
 # Define retryable exceptions for Cartesia if known, otherwise use generic ones
@@ -1084,7 +1331,7 @@ def launch_bartender_interface():
 
 
 # %% [markdown] id="OjZFOOFpItNX"
-# # Run the Bartending Agent 🍹👋
+# # Run the Bartending Agent 🍸👋
 
 # %% id="BBPtIMysHwnz" outputId="90990cb8-1f04-487a-8d71-4efbd62b8737"
 # Launch the interface when this cell is executed
