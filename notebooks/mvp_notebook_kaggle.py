@@ -1189,6 +1189,10 @@ synthwave_theme = gr.themes.Default(
     # Text
     body_text_color=synth_text,
     error_text_color=synth_pink,
+    input_background_fill="#f9f7f3",  # Light background for input
+    input_border_color=synth_cyan,
+    input_placeholder_color=colors.gray.c500,
+    slider_color=synth_pink,
 
     # Borders
     border_color_primary=synth_purple,
@@ -1205,12 +1209,6 @@ synthwave_theme = gr.themes.Default(
     button_secondary_text_color=synth_background_dark,
     button_cancel_background_fill=synth_orange,
     button_cancel_text_color=synth_background_dark,
-
-    # Inputs / Sliders / etc.
-    input_background_fill=synth_background_dark, 
-    input_border_color=synth_cyan,
-    input_placeholder_color=colors.gray.c500,
-    slider_color=synth_pink,
 
     # Block appearance
     block_label_background_fill=synth_background_med, 
@@ -1308,9 +1306,9 @@ def clear_chat_state() -> Tuple[List, List, List, None]:
 
 # %% id="7E6cgjryIqdV"
 def launch_bartender_interface():
-    theme = gr.themes.Citrus()
-
-    with gr.Blocks(theme=synthwave_theme) as demo:
+    ui_theme = gr.themes.Ocean()
+    # Create the interface
+    with gr.Blocks(theme=ui_theme) as demo:
         gr.Markdown("# MOK 5-ha - Meet Maya the Bartender 🍹👋")
         gr.Markdown("Welcome to MOK 5-ha! I'm Maya, your virtual bartender. Ask me for a drink or check your order.")
 
