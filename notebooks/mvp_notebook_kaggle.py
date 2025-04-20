@@ -37,49 +37,37 @@
 # ## Importing Libraries 📚
 
 # %%
+# Importing common libraries
 import os
 import logging
 import sys
-import re # For parsing the menu
+import re 
 import io
-import base64
 import requests
-import json # For parsing tool arguments if needed
-from typing import Dict, List, Optional, Tuple, Any
+import numpy as np
+from typing import Dict, List, Tuple, Any
+
+# Visualizations
+import matplotlib.pyplot as plt
+from PIL import Image
+
+# Agent packages
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
+from langchain_core.tools import tool
+
+# FAISS for vector similarity search
+import faiss
 
 # Agent UI
 import gradio as gr
 from gradio.themes.utils import colors, fonts, sizes
 
-# Visualizations
-import matplotlib.pyplot as plt
-from PIL import Image
-# Generative AI / Agent packages
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_core.messages import HumanMessage, AIMessage, SystemMessage, ToolMessage
-from langchain_core.tools import tool
 
-# %% [markdown]
-# ## Set up logging
-
-# %% id="VkTkJ89iGKTd"
-logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-logger = logging.getLogger(__name__)
-
-# %% [markdown]
-# # API Key Setup (WIP) 🤖
-
-# %% [markdown]
-# ## API Key Setup (WIP) 🤖
-
-# %% [markdown] id="QyccDKQIGxxT"
-# # Bartending Agent Implementation 🤖
-
-# %% id="genai_version_cell"
+# %%
+# Generative AI
 try:
     import google.generativeai as genai
-    from google.api_core import retry as core_retry # For potential core retries
-    from google.generativeai import types as genai_types # For specific types if needed later
 except ImportError:
     print("Error: google.generativeai library not found.")
     print("Please install it using: pip install google-generativeai")
@@ -90,10 +78,10 @@ print("genai version:",genai.__version__)
 # Tenacity for retries on specific functions
 try:
     from tenacity import (
-        retry as tenacity_retry, # Alias to avoid confusion with google.api_core.retry
+        retry as tenacity_retry,
+        retry_if_exception_type,
         stop_after_attempt,
         wait_exponential,
-        retry_if_exception_type,
         before_sleep_log
     )
 except ImportError:
@@ -104,40 +92,57 @@ except ImportError:
         def decorator(func):
             return func
         return decorator
-    RETRYABLE_EXCEPTIONS = (Exception,) # Fallback to generic exception
-    before_sleep_log = lambda logger, level: None # Dummy function
+    RETRYABLE_EXCEPTIONS = (Exception,) 
+    before_sleep_log = lambda logger, level: None 
 
+# Cartesia for Text-to-Speech
 try:
     from cartesia import Cartesia
-    from cartesia.tts import OutputFormat_Raw, TtsRequestIdSpecifier
 except ImportError:
     print("Error: Cartesia library not found.")
     print("Please ensure it's installed with: pip install cartesia")
     sys.exit(1)
 
-# %% id="FB4uGl8iHjnm"
-# --- Configuration ---
+# %% [markdown]
+# ## Set up logging
 
+# %% id="VkTkJ89iGKTd"
+logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+logger = logging.getLogger(__name__)
+
+# %% [markdown]
+# # API Key Setup (WIP) 🤖
+#
+# To be used on Kaggle
+
+# %% [markdown] id="QyccDKQIGxxT"
+# # Bartending Agent Implementation 🤖
+
+# %% [markdown]
+# ## Configuration
+
+# %% id="FB4uGl8iHjnm"
 # Load Gemini API key from .env file
 from dotenv import load_dotenv
 load_dotenv()
+
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise ValueError("GEMINI_API_KEY not found in environment variables. Please set it in your .env file.")
 
 # Get Cartesia API Key (Ensure this is set in your .env file or system environment)
-CARTESIA_API_KEY = os.getenv("CARTESIA_API_KEY") # Load Cartesia key
+CARTESIA_API_KEY = os.getenv("CARTESIA_API_KEY") 
 
 if not CARTESIA_API_KEY:
     logger.error("FATAL: CARTESIA_API_KEY not found in environment variables or .env file.")
-    # Decide if TTS is optional or required. Assuming required for now.
+    # TTS is required for this implementation
     raise EnvironmentError("CARTESIA_API_KEY is required but not found.")
 
 # %% id="_lebELKHHmUL"
-# Initialize Cartesia Client (ONCE at module load)
+# Initialize Cartesia Client
 try:
     # Replace "your-chosen-voice-id" with an actual valid ID from Cartesia
-    CARTESIA_VOICE_ID = "6f84f4b8-58a2-430c-8c79-688dad597532" # Example placeholder ID - CHANGE THIS
+    CARTESIA_VOICE_ID = "6f84f4b8-58a2-430c-8c79-688dad597532" 
     if not CARTESIA_VOICE_ID or "your-chosen-voice-id" in CARTESIA_VOICE_ID:
          logger.warning("CARTESIA_VOICE_ID is not set to a valid ID. Please edit bartending_agent.py.")
          # Decide if this is fatal. Maybe proceed without voice for now?
@@ -146,22 +151,18 @@ try:
         api_key=CARTESIA_API_KEY,
         )
     logger.info("Successfully initialized Cartesia client.")
-    # Optional: Could add a check here to verify the voice ID exists using the client if possible
 except Exception as e:
      logger.exception("Fatal: Failed to initialize Cartesia client.")
      raise RuntimeError("Cartesia client initialization failed.") from e
+
 
 # %% [markdown]
 # # RAG Implementation 📚
 
 # %% id="gemini_embedding_function"
 # Embedding function for RAG implementation
-from tenacity import retry, stop_after_attempt, wait_exponential
-import numpy as np
-import google.generativeai as genai
-import faiss
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
+@tenacity_retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=4, max=10))
 def get_embedding(text, task_type="RETRIEVAL_DOCUMENT"):
     """Get embedding for a single text using Google Generative AI."""
     try:
@@ -185,7 +186,6 @@ def get_embedding(text, task_type="RETRIEVAL_DOCUMENT"):
 
 # %% id="faiss_setup"
 # Initialize FAISS and populate with documents
-import numpy as np
 
 # Pre-defined example documents
 DOCUMENT1 = "It seems like a pleasant evening."
@@ -205,6 +205,7 @@ print("Generating embeddings for documents...")
 document_embeddings = []
 valid_documents = []
 
+# Generate embeddings
 for i, doc in enumerate(documents):
     embedding = get_embedding(doc, task_type="RETRIEVAL_DOCUMENT")
     if embedding is not None:
@@ -218,7 +219,7 @@ document_embeddings = np.array(document_embeddings).astype('float32')
 
 # Initialize FAISS index
 dimension = len(document_embeddings[0])
-index = faiss.IndexFlatL2(dimension)  # Using L2 distance
+index = faiss.IndexFlatL2(dimension)  
 
 # Add vectors to the index
 index.add(document_embeddings)
@@ -395,6 +396,7 @@ def get_recommendation(preference: str) -> str:
     
     preference = preference.lower()
     
+    # Check if the preference is valid
     if preference in preferences_map:
         rec = preferences_map[preference]
         drinks_list = ", ".join(rec["drinks"])
@@ -405,20 +407,19 @@ def get_recommendation(preference: str) -> str:
         return f"I'm not familiar with that specific preference, but some of our most popular drinks are: {popular_drinks}"
 
 # --- Tenacity retry decorator for _call_gemini_api ---
-# ... (keep the @tenacity_retry decorator as it was) ...
 @tenacity_retry(
     stop=stop_after_attempt(3),
     wait=wait_exponential(multiplier=1, min=2, max=10),
     #retry=retry_if_exception_type(RETRYABLE_EXCEPTIONS),
-    before_sleep=before_sleep_log(logger, logging.WARNING) if callable(before_sleep_log) else None, # Check if callable
-    reraise=True # Re-raise the exception if all retries fail
+    before_sleep=before_sleep_log(logger, logging.WARNING) if callable(before_sleep_log) else None, 
+    reraise=True 
 )
-def _call_gemini_api(prompt_content: List[Dict], config: Dict) -> genai.types.GenerateContentResponse: # Adjusted input type hint
+def _call_gemini_api(prompt_content: List[Dict], config: Dict) -> genai.types.GenerateContentResponse: 
     """Internal function to call the Gemini API with retry logic (Stateless)."""
     logger.debug("Calling Gemini API...")
     # Uses the globally initialized 'model'
     response = model.generate_content(
-        contents=prompt_content, # Correct parameter name is 'contents'
+        contents=prompt_content, 
         generation_config=config,
         # safety_settings can be added here if needed
     )
@@ -426,10 +427,8 @@ def _call_gemini_api(prompt_content: List[Dict], config: Dict) -> genai.types.Ge
     return response
 
 
-# --- New LangGraph-style System Prompt ---
-# (Note: The actual tools mentioned here like add_to_order are not yet implemented
-# in this specific file structure. The LLM will receive these instructions, but
-# the surrounding code doesn't execute LangGraph tools.)
+# --- LangGraph-style System Prompt ---
+
 MAYABARTENDERBOT_SYSINT = (
     "You are Maya, a highly-skilled bartender at 'MOK 5-ha Bar'. MOK 5-ha means Moksha, representing spiritual liberation.\n\n"
     "You have these qualities and abilities:\n"
@@ -457,18 +456,18 @@ current_process_order_state = {'order': [], 'finished': False}
 # Initialize global state for conversation tracking
 conversation_state = {
     'turn_count': 0,
-    'phase': 'greeting',  # 'greeting', 'order_taking', 'small_talk', 'reorder_prompt'
-    'last_order_time': 0,  # Track when the last order was placed
-    'small_talk_count': 0  # Counter for small talk turns
+    'phase': 'greeting',  
+    'last_order_time': 0,  
+    'small_talk_count': 0  
 }
 
 # Add persistent order history to track all items across the session
 order_history = {
-    'items': [],       # All items ordered in this session
-    'total_cost': 0.0, # Running total of all orders
-    'paid': False,     # Whether bill has been paid
-    'tip_amount': 0.0, # Amount of tip added
-    'tip_percentage': 0.0 # Percentage of tip (for reference)
+    'items': [],       
+    'total_cost': 0.0, 
+    'paid': False,     
+    'tip_amount': 0.0, 
+    'tip_percentage': 0.0 
 }
 
 # Phase-specific prompts
@@ -491,7 +490,7 @@ def determine_next_phase(current_state, order_placed):
     
     # If an order was just placed, transition to small talk
     if order_placed:
-        current_state['small_talk_count'] = 0  # Reset small talk counter after an order
+        current_state['small_talk_count'] = 0  
         return 'small_talk'
     
     # If we're taking an order, stay in that phase
@@ -500,18 +499,18 @@ def determine_next_phase(current_state, order_placed):
     
     # If we're in small talk phase
     if phase == 'small_talk':
-        if small_talk_count >= 4:  # After 4 turns of small talk
-            return 'reorder_prompt'  # Ask if they want to order anything else
-        return 'small_talk'  # Continue small talk
+        if small_talk_count >= 4:  
+            return 'reorder_prompt'  
+        return 'small_talk'  
     
     # If we just prompted for a reorder
     if phase == 'reorder_prompt':
         # Go back to small talk regardless of whether they ordered
-        current_state['small_talk_count'] = 0  # Reset small talk counter
-        return 'small_talk'
+        current_state['small_talk_count'] = 0  
+        return 'small_talk'  
     
     # Default fallback
-    return 'small_talk'
+    return 'small_talk'  
 
 def process_order(
     user_input_text: str,
@@ -521,7 +520,7 @@ def process_order(
     """
     Processes user input using LangChain LLM with tool calling, updates state.
     """
-    global menu, llm, current_process_order_state, conversation_state # Access global LLM, menu dict and conversation state
+    global menu, llm, current_process_order_state, conversation_state 
 
     if not user_input_text:
         logger.warning("Received empty user input.")
@@ -531,9 +530,9 @@ def process_order(
     # Copy Gradio state to our temporary global state accessible by tools
     # NOTE: This global approach is simple for this example but not ideal for concurrent requests.
     # A better approach in a real app might involve classes or context managers.
-    current_process_order_state['order'] = current_session_order[:] # Copy list
-    current_process_order_state['finished'] = False # Reset finished flag for this turn
-    
+    current_process_order_state['order'] = current_session_order[:] 
+    current_process_order_state['finished'] = False 
+
     # Detect if this is the first interaction (empty history)
     is_first_interaction = len(current_session_history) == 0
     if is_first_interaction:
@@ -596,7 +595,7 @@ def process_order(
                     highest_score = score
                     matched_intent = intent
         
-        if matched_intent and highest_score >= 0.3:  # Threshold for confidence
+        if matched_intent and highest_score >= 0.3:  
             return {'intent': matched_intent, 'confidence': highest_score}
         else:
             return {'intent': None, 'confidence': 0}
@@ -618,7 +617,7 @@ def process_order(
             agent_response_text = tool_result
             
         # Update history for Gradio display
-        updated_history_for_gradio = current_session_history[:] # Start with original history for the turn
+        updated_history_for_gradio = current_session_history[:] 
         updated_history_for_gradio.append({'role': 'user', 'content': user_input_text})
         updated_history_for_gradio.append({'role': 'assistant', 'content': agent_response_text})
             
@@ -636,7 +635,7 @@ def process_order(
     
     # Add Menu (as system/context info - could also be retrieved via tool call if user asks)
     # This explicitly calls the tool using the correct interface, providing a dummy input(the empty dictionary) that satisfies the method signature, even though the get_menu function itself doesn't use it.
-    messages.append(SystemMessage(content="\nHere is the menu:\n" + get_menu.invoke({}))) # Use invoke()
+    messages.append(SystemMessage(content="\nHere is the menu:\n" + get_menu.invoke({}))) 
 
     # Convert Gradio history to LangChain message types
     history_limit = 10
@@ -647,21 +646,19 @@ def process_order(
         if role == "user":
             messages.append(HumanMessage(content=content))
         elif role == "assistant":
-            messages.append(AIMessage(content=content)) # Assuming simple text responses previously
+            messages.append(AIMessage(content=content)) 
 
     # Add the latest user input
     messages.append(HumanMessage(content=user_input_text))
 
     logger.info(f"Processing user input for session: {user_input_text}")
-    # logger.debug(f"Messages sent to LLM: {messages}")
     
     try:
         # --- LLM Interaction Loop (Handles Tool Calls) ---
         while True:
             # Invoke the LLM with current messages
             ai_response: AIMessage = llm.invoke(messages)
-            # logger.debug(f"LLM Response Object: {ai_response}")
-
+            
             # Append the AI's response (could be text or tool call request)
             messages.append(ai_response)
 
@@ -693,14 +690,14 @@ def process_order(
                         logger.warning(f"RAG enhancement failed: {rag_error}. Using original response.")
                         # agent_response_text remains unchanged
                 
-                break # Exit the loop
+                break 
             # --- Tool Call Execution ---
             logger.info(f"LLM requested tool calls: {ai_response.tool_calls}")
-            tool_messages = [] # Collect tool results
+            tool_messages = [] 
             for tool_call in ai_response.tool_calls:
                 tool_name = tool_call.get("name")
                 tool_args = tool_call.get("args", {})
-                tool_id = tool_call.get("id") # Important for ToolMessage
+                tool_id = tool_call.get("id") 
 
                 # Find the corresponding tool function
                 selected_tool = next((t for t in tools if t.name == tool_name), None)
@@ -736,7 +733,7 @@ def process_order(
         updated_order_from_tools = current_process_order_state['order']
 
         # Update history for Gradio display
-        updated_history_for_gradio = current_session_history[:] # Start with original history for the turn
+        updated_history_for_gradio = current_session_history[:] 
         updated_history_for_gradio.append({'role': 'user', 'content': user_input_text})
         # We might want to include tool interactions in history for debugging, but maybe not for user display
         # For now, just add the final assistant response
@@ -789,7 +786,7 @@ def _parse_menu_items(menu_str: str) -> Dict[str, float]:
     for match in matches:
         item_name = match[0].strip()
         price = float(match[1])
-        items[item_name.lower()] = price # Store lowercase for easier matching
+        items[item_name.lower()] = price 
     return items
 
 @tool
@@ -820,9 +817,9 @@ def add_to_order(item_name: str, modifiers: list[str] = None, quantity: int = 1)
         # Instead of a loop that adds individual items, create a single item with quantity info
         item = {
             "name": item_name, 
-            "price": price * quantity,  # Total price for all items
+            "price": price * quantity,  
             "modifiers": modifier_str,
-            "quantity": quantity  # Store quantity information
+            "quantity": quantity  
         }
         
         # Add to current order state (for this session)
@@ -877,8 +874,8 @@ def get_order() -> str:
     # Enhanced order display including quantity and modifiers
     order_details = []
     for item in order_list:
-        quantity = item.get('quantity', 1)  # Default to 1 if not specified
-        
+        quantity = item.get('quantity', 1)  
+    
         if "modifiers" in item and item["modifiers"] != "no modifiers":
             # Show single price per item, not total price
             item_price = item['price'] / quantity if quantity > 0 else item['price']
@@ -945,9 +942,9 @@ def place_order() -> str:
     
     # Mark order as finished (though 'finished' isn't explicitly in Gradio state)
     # We no longer clear the entire order history, just this round's order
-    current_process_order_state['order'] = []  # Clear current order after placing
-    current_process_order_state['finished'] = True  # Set a flag if needed later
-    
+    current_process_order_state['order'] = []  
+    current_process_order_state['finished'] = True  
+
     return f"Order placed successfully! Your items ({order_text}) totalling ${total:.2f} will be ready in approximately {prep_time} minutes."
 
 @tool
@@ -962,8 +959,8 @@ def get_bill() -> str:
     bill_details = []
     for item in order_history['items']:
         item_text = item['name']
-        quantity = item.get('quantity', 1)  # Default to 1 if not specified
-        
+        quantity = item.get('quantity', 1)  
+    
         if "modifiers" in item and item["modifiers"] != "no modifiers":
             item_text += f" with {item['modifiers']}"
             
@@ -1065,7 +1062,7 @@ def initialize_llm():
     try:
         # Create configuration for google_genai
         config = {
-            "temperature": 0.2,  # Lower the temperature to make the agent more reliable at executing tools
+            "temperature": 0.2,  
             "top_p": 0.95,
             "top_k": 1,
             "max_output_tokens": 2048,
@@ -1080,7 +1077,7 @@ def initialize_llm():
             top_k=config["top_k"],
             max_output_tokens=config["max_output_tokens"],
             google_api_key=GEMINI_API_KEY
-        ).bind_tools(tools)  # Bind the tools to the LLM
+        ).bind_tools(tools)  
         
         logger.info(f"Successfully initialized LangChain ChatGoogleGenerativeAI model bound with tools.")
         return llm
@@ -1094,8 +1091,7 @@ llm = initialize_llm()
 # Define retryable exceptions for Cartesia if known, otherwise use generic ones
 # Example: CARTESIA_RETRYABLE_EXCEPTIONS = (cartesia.errors.ServerError, cartesia.errors.RateLimitError, ConnectionError)
 # Using generic exceptions for now as specific Cartesia ones aren't known here.
-CARTESIA_RETRYABLE_EXCEPTIONS = (ConnectionError, TimeoutError) # Add more specific Cartesia errors if documented
-
+CARTESIA_RETRYABLE_EXCEPTIONS = (ConnectionError, TimeoutError) 
 
 @tenacity_retry(
     stop=stop_after_attempt(3),
@@ -1106,8 +1102,7 @@ CARTESIA_RETRYABLE_EXCEPTIONS = (ConnectionError, TimeoutError) # Add more speci
 )
 def get_voice_audio(text_to_speak: str) -> bytes | None:
     """Calls Cartesia API synchronously to synthesize speech and returns WAV bytes."""
-    global cartesia_client, CARTESIA_VOICE_ID # Access the global client and voice ID
-
+    global cartesia_client, CARTESIA_VOICE_ID 
 
     if not text_to_speak or not text_to_speak.strip():
         logger.warning("get_voice_audio received empty text.")
@@ -1116,22 +1111,19 @@ def get_voice_audio(text_to_speak: str) -> bytes | None:
          logger.error("Cartesia client or voice ID not initialized, cannot generate audio.")
          return None
 
-
     try:
         # Replace "MOK 5-ha" with "Moksha" for pronunciation in TTS
         text_for_tts = re.sub(r'MOK 5-ha', 'Moksha', text_to_speak, flags=re.IGNORECASE)
         if text_for_tts != text_to_speak:
             logger.info("Applied 'MOK 5-ha' → 'Moksha' pronunciation for TTS.")
 
-
         logger.info(f"Requesting TTS from Cartesia (Voice ID: {CARTESIA_VOICE_ID}) for: '{text_for_tts[:50]}...'")
-
 
         # --- Check Cartesia Documentation for the exact method call ---
         # This is a plausible synchronous implementation pattern:
         audio_generator = cartesia_client.tts.bytes(
             model_id="sonic-2",
-            transcript=text_for_tts,  # Use the modified text with correct pronunciation
+            transcript=text_for_tts,  
             voice={"mode":"id",
                    "id": CARTESIA_VOICE_ID,
             },
@@ -1143,20 +1135,16 @@ def get_voice_audio(text_to_speak: str) -> bytes | None:
             },
         )
 
-
         # Concatenate chunks from the generator for a blocking result
         audio_data = b"".join(chunk for chunk in audio_generator)
         # --- End of section requiring Cartesia documentation check ---
-
 
         if not audio_data:
             logger.warning("Cartesia TTS returned empty audio data.")
             return None
 
-
         logger.info(f"Received {len(audio_data)} bytes of WAV audio data from Cartesia.")
         return audio_data
-
 
     # Catch specific Cartesia errors if they exist and are imported
     # except cartesia.errors.CartesiaError as e:
@@ -1176,7 +1164,7 @@ def get_voice_audio(text_to_speak: str) -> bytes | None:
 # Synthwave '84 Inspired Theme Definition
 # Color Palette
 synth_background_dark = "#2a2139"
-synth_background_med = "#3b3269" # Keep this defined for potential use elsewhere
+synth_background_med = "#3b3269" 
 synth_text = "#f9f7f3"
 synth_pink = "#ff79c6"
 synth_cyan = "#80ffea"
@@ -1195,8 +1183,8 @@ synthwave_theme = gr.themes.Default(
     # Backgrounds
     body_background_fill=synth_background_dark,
     background_fill_primary=synth_background_dark,
-    background_fill_secondary=synth_background_dark, # Also set secondary body background dark
-    block_background_fill=synth_background_dark,     # CHANGED to darker background
+    background_fill_secondary=synth_background_dark, 
+    block_background_fill=synth_background_dark,     
 
     # Text
     body_text_color=synth_text,
@@ -1219,13 +1207,13 @@ synthwave_theme = gr.themes.Default(
     button_cancel_text_color=synth_background_dark,
 
     # Inputs / Sliders / etc.
-    input_background_fill=synth_background_dark, # Keep this dark too
+    input_background_fill=synth_background_dark, 
     input_border_color=synth_cyan,
     input_placeholder_color=colors.gray.c500,
     slider_color=synth_pink,
 
     # Block appearance
-    block_label_background_fill=synth_background_med, # Labels can have the medium background
+    block_label_background_fill=synth_background_med, 
     block_label_text_color=synth_text,
     block_title_text_color=synth_cyan,
     block_radius=sizes.radius_md,
@@ -1292,10 +1280,10 @@ def handle_gradio_input(
     )
 
     # --- Get Voice Audio ---
-    audio_data = None # Default to None
+    audio_data = None 
     # Check if there is a non-empty response text to synthesize
     if response_text and response_text.strip():
-         audio_data = get_voice_audio(response_text) # Call the imported function
+         audio_data = get_voice_audio(response_text) 
          if audio_data is None:
              logger.warning("Failed to get audio data from get_voice_audio.")
              # Optional: Add indication to user? E.g., append "[Audio failed]" to response_text
@@ -1335,23 +1323,23 @@ def launch_bartender_interface():
 
             # --- Column 1: Avatar Image ---
             # Scale is relative to other columns in the same row
-            with gr.Column(scale=1, min_width=200): # Keep scale=1
+            with gr.Column(scale=1, min_width=200): 
                 gr.Image(
-                    value=avatar_path,  # Use the saved avatar path
+                    value=avatar_path,  
                     label="Bartender Avatar",
                     show_label=False,
                     interactive=False,
-                    height=600, # Adjust as desired
+                    height=600, 
                     elem_classes=["avatar-image"]
                 )
 
             # --- Column 2: Chat Interface ---
-            with gr.Column(scale=1): # <-- Changed scale from 3 to 1
+            with gr.Column(scale=1): 
                 chatbot_display = gr.Chatbot(
                     [],
                     elem_id="chatbot",
                     label="Conversation",
-                    height=489, # Keep or adjust height for rectangular shape
+                    height=489, 
                     type="messages"
                 )
                 agent_audio_output = gr.Audio(
@@ -1380,8 +1368,7 @@ def launch_bartender_interface():
         clear_btn.click(clear_chat_state, None, clear_outputs)
 
     # Launch the interface
-    demo.launch(debug=True, share=True)  # share=True to make it accessible via a public URL
-
+    demo.launch(debug=True, share=True)  
 
 # %% [markdown] id="OjZFOOFpItNX"
 # # Run the Bartending Agent 🍹👋
