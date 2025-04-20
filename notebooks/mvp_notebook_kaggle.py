@@ -379,6 +379,21 @@ except Exception as e:
 # %% [markdown]
 # # Tooling
 
+# %% [markdown]
+# ### The Menu Tool: Maya's Drink Knowledge Foundation
+#
+# The **get_menu()** tool is a cornerstone of Maya's functionality as a bartending agent. This tool serves several critical purposes:
+#
+# 1. **Comprehensive Drink Catalog**: It provides Maya with a complete inventory of available drinks, prices, and options, allowing her to accurately respond to ordering requests.
+#
+# 2. **Price Management**: The menu includes pricing information, which is essential for the billing functionality and helps Maya calculate order totals correctly.
+#
+# 3. **Bartending Expertise**: By including specialized terminology like "neat," "on the rocks," and "dirty," the menu enables Maya to understand and process complex drink orders with proper bartending terminology.
+#
+# 4. **Preference Matching**: The preference guide at the bottom (sobering, classy, fruity, etc.) gives Maya the knowledge to make personalized recommendations based on customer taste preferences.
+#
+# 5. **Modifier Support**: The inclusion of modifiers allows Maya to handle customized orders, making the interaction more realistic and accommodating diverse customer preferences.
+
 # %% id="Ng_t4TUIHwL7"
 @tool
 def get_menu() -> str:
@@ -424,6 +439,21 @@ def get_menu() -> str:
     'strong' - Higher alcohol content for experienced drinkers
     'burning' - Intense sensation with high alcohol content, often spirits like whiskey
 """
+
+# %% [markdown]
+# ### The Recommendation Tool: Maya's Personalized Drink Suggestions
+#
+# The **get_recommendation()** tool is a key element that elevates Maya from a basic order-taker to a knowledgeable bartender with the ability to provide personalized suggestions. This tool serves several important functions:
+#
+# 1. **Preference Matching**: It translates abstract customer preferences like "fruity" or "strong" into concrete drink recommendations, mimicking how a real bartender would suggest drinks based on taste preferences.
+#
+# 2. **Categorized Knowledge**: The tool organizes drinks into meaningful categories with descriptive explanations, giving Maya expert knowledge of drink profiles and characteristics.
+#
+# 3. **Personalized Experience**: By matching customer preferences to specific drinks, it creates a more personalized interaction, making customers feel understood and well-served.
+#
+# 4. **Graceful Fallbacks**: Even when customers use unknown preference terms, Maya can still provide popular recommendations rather than failing completely.
+#
+# 5. **Natural Conversation Flow**: The descriptive language for each category ("sophisticated classics," "perfect balance of sweetness") gives Maya natural-sounding, bartender-like language to use when making recommendations.
 
 # %%
 @tool
@@ -472,6 +502,21 @@ def get_recommendation(preference: str) -> str:
         return f"I'm not familiar with that specific preference, but some of our most popular drinks are: {popular_drinks}"
 
 
+# %% [markdown]
+# ### The Gemini API Caller: Maya's Resilient Communication Channel
+#
+# The **_call_gemini_api()** function is a critical infrastructure component that ensures reliable communication between Maya and Google's Gemini AI model. This function addresses several key requirements:
+#
+# 1. **Fault Tolerance**: The **@tenacity_retry** decorator implements sophisticated retry logic, allowing Maya to automatically recover from transient API failures such as network issues or rate limiting.
+#
+# 2. **Exponential Backoff**: By using **wait_exponential**, the function intelligently spaces out retry attempts (starting at 2 seconds and increasing up to 10 seconds), which helps prevent overwhelming the API during service disruptions.
+#
+# 3. **Resilience Limits**: The **stop_after_attempt(3)** parameter ensures Maya doesn't get stuck in an infinite retry loop if there's a persistent issue, maintaining responsiveness even in failure scenarios.
+#
+# 4. **Observability**: The logging functionality before sleep intervals provides visibility into retry attempts, making it easier to diagnose API interaction issues.
+#
+# 5. **Clean Interface**: The function abstracts away all the complexity of API communication and error handling, providing a simple interface for the rest of the system.
+
 # %%
 # --- Tenacity retry decorator for _call_gemini_api ---
 @tenacity_retry(
@@ -496,6 +541,13 @@ def _call_gemini_api(prompt_content: List[Dict], config: Dict) -> genai.types.Ge
 
 # %% [markdown]
 # ## LangGraph-style System Prompt
+
+# %% [markdown]
+# ### Maya's Core Personality and Conversation Management
+#
+# This section defines the foundational elements of Maya's identity, behavior patterns, and conversation management capabilities.
+#
+# **System Instructions (MAYABARTENDERBOT_SYSINT)**: This is Maya's "digital DNA" - the core system instructions that define her personality and operational parameters
 
 # %%
 MAYABARTENDERBOT_SYSINT = (
@@ -607,7 +659,41 @@ def determine_next_phase(current_state, order_placed):
 
 
 # %% [markdown]
+# ### Maya's Processing Brain: The Order Handler
 #
+# The **process_order** function is Maya's cognitive center - translating customer inputs into bartender actions. This complex function features:
+#
+# 1. Intent Detection
+# - Uses pattern matching to recognize when customers want to view orders, see bills, or pay
+# - Bypasses the full LLM processing for these common requests for faster response
+#
+# 2. Conversation Management
+# - Maintains state across turns using the global **conversation_state**
+# - Tracks which phase of conversation Maya is in (greeting, ordering, small talk, reorder prompting)
+# - Selects appropriate prompt templates based on the current phase
+#
+# 3. LLM Interaction Loop
+# - Prepares message history with appropriate system prompts and context
+# - Sends customer requests to the Gemini model
+# - Processes any tool calls requested by the model (e.g., adding drinks to order)
+# - Returns the model's final response
+#
+# 4. RAG Enhancement
+# - Detects casual conversation vs. drink ordering
+# - For casual chat, enhances responses using the RAG pipeline
+# - Integrates retrieved knowledge with Maya's personality
+#
+# 5. Error Handling
+# - Provides robust error handling at multiple levels
+# - Ensures the conversation continues even if a specific operation fails
+# - Logs detailed information for debugging
+#
+# 6. State Transitions
+# - Updates conversation phase based on interaction outcome
+# - Tracks when orders are placed to manage conversation flow
+# - Maintains small talk counter to know when to prompt for reorders
+#
+# This function is the orchestration layer that brings together all of Maya's capabilities - RAG knowledge, tool usage, conversational phases, and personality.
 
 # %%
 def process_order(
@@ -871,10 +957,6 @@ def process_order(
 
 
 # %% id="jMM9jggIVHVV"
-# --- Tool Definitions ---
-
-# (Keep your existing @tool def get_menu() -> str: ... here)
-
 # Helper function to parse the menu string (you might need to adjust regex based on exact format)
 def _parse_menu_items(menu_str: str) -> Dict[str, float]:
     items = {}
@@ -888,6 +970,25 @@ def _parse_menu_items(menu_str: str) -> Dict[str, float]:
         items[item_name.lower()] = price 
     return items
 
+# %% [markdown]
+# ### The Order Handler: Maya's Drink Recording Tool
+# The **add_to_order()** tool is Maya's primary mechanism for capturing customer drink orders. This essential function:
+#
+# 1. **Captures Drink Specifications**: Records the drink name, any modifiers (like "on the rocks"), and quantity in a structured format.
+#
+# 2. **Validates Menu Items**: Checks if the requested drink actually exists on the menu by parsing the menu text and comparing against it.
+#
+# 3. **Tracks Quantities**: Properly handles multiple drink orders (e.g., "two martinis") by storing quantity information directly with each item.
+#
+# 4. **Calculates Pricing**: Automatically computes the correct price based on quantity and the menu's base price.
+#
+# 5. **Maintains Dual State**:
+#     - Updates the current session state for immediate use
+#     - Adds to the persistent order history for bill generation and session tracking
+#
+# 6. **Provides Confirmation**: Returns clear feedback about what was added to the order, including quantity and modifiers.
+
+# %%
 @tool
 def add_to_order(item_name: str, modifiers: list[str] = None, quantity: int = 1) -> str:
     """Adds the specified drink to the customer's order, including any modifiers.
@@ -934,6 +1035,26 @@ def add_to_order(item_name: str, modifiers: list[str] = None, quantity: int = 1)
         logger.warning(f"Tool: Attempted to add item '{item_name}' not found in parsed menu.")
         return f"Error: Item '{item_name}' could not be found on the current menu. Please verify the item name."
 
+
+# %% [markdown]
+# ### The Order Confirmation Tool: Maya's Order Verification Step
+#
+# The **confirm_order()** tool provides a critical verification step in Maya's order processing workflow. This function:
+#
+# 1. **Displays Order Details**: Creates a formatted list of all items in the current order, including:
+#     - Item names
+#     - Preparation modifiers (e.g., "on the rocks")
+#     - Individual prices
+#
+# 2. **Calculates Total**: Computes and shows the order's total cost
+#
+# 3. **Handles Empty Orders**: Provides appropriate feedback when there's nothing in the order
+#
+# 4. **Prompts for Verification**: Explicitly asks the customer to confirm if everything is correct
+#
+# 5. **Offers Options**: Suggests that customers can add/remove items or proceed to finalize
+
+# %%
 @tool
 def confirm_order() -> str:
     """Displays the current order to the user and asks for confirmation.
@@ -961,6 +1082,31 @@ def confirm_order() -> str:
     
     return confirmation_request
 
+
+# %% [markdown]
+# ### The Order Display Tool: Maya's Order Recall Function
+#
+# The get_order() tool provides customers with a clear view of their current order. This function:
+#
+# 1. **Retrieves Current Order**: Accesses the global state to display what the customer has ordered so far
+#
+# 2. **Handles Empty Orders**: Provides appropriate messaging when there's nothing in the order yet
+#
+# 3. **Shows Item Details**: Presents a formatted list that includes:
+#     - Item quantities (e.g., "2x Martini")
+#     - Item names
+#     - Any preparation modifiers (e.g., "with on the rocks")
+#     - Price per item (not just the total price)
+#
+# 4. **Price Transparency**: Shows individual item prices
+#     - Clearly distinguishes between "each" pricing and total
+#     - Calculates and displays the running total
+#
+# 5. **Quantity-Aware Formatting**: Adjusts the display format based on quantity:
+#     - Single items show just the name and price
+#     - Multiple items show the quantity with "each" pricing
+
+# %%
 @tool
 def get_order() -> str:
     """Returns the current list of items in the order for the agent to see."""
@@ -995,6 +1141,8 @@ def get_order() -> str:
     
     return f"Current Order:\n{order_text}\nTotal: ${total:.2f}"
 
+
+# %%
 @tool
 def clear_order() -> str:
     """Removes all items from the user's order.
@@ -1004,6 +1152,34 @@ def clear_order() -> str:
     """
     return "Your order has been cleared."
 
+
+# %% [markdown]
+# ### The Order Placement Tool: Maya's Order Processor
+#
+# The **place_order()** tool finalizes the customer's order and transitions it from "pending" to "being prepared." This function:
+#
+# 1. **Validates Order State**: Ensures there are actually items in the order before proceeding
+#
+# 2. **Processes Items**: For each item in the current order:
+#     - Calculates running total cost
+#     - Transfers items from temporary state to persistent order history
+#     - Formats items with their modifiers for display
+#
+# 3. **Generates Realistic Details**:
+#     - Simulates a random preparation time (2-8 minutes)
+#     - Creates a natural-sounding confirmation message
+#
+# 4. **Manages State Transitions**:
+#     - Clears the current order (but preserves history)
+#     - Sets the finished flag to trigger conversation phase changes
+#     - Maintains the full order history for billing
+#     
+# 5. **Provides Confirmation**: Returns a detailed confirmation including:
+#     - All ordered items
+#     - Total cost
+#     - Estimated preparation time
+
+# %%
 @tool
 def place_order() -> str:
     """Finalizes and places the customer's confirmed order."""
@@ -1046,6 +1222,35 @@ def place_order() -> str:
 
     return f"Order placed successfully! Your items ({order_text}) totalling ${total:.2f} will be ready in approximately {prep_time} minutes."
 
+
+# %% [markdown]
+# ### The Billing and Payment Tools: Maya's Financial Management System
+#
+# These three tools form Maya's payment processing system, allowing her to accurately calculate bills, handle tips, and process payments:
+#
+# 1. **get_bill()**: The Bill Generator
+# - Creates an itemized receipt showing all orders with quantities, modifiers, and prices
+# - Properly calculates per-unit prices vs. total prices for multi-quantity items
+# - Handles tip display, showing percentage and amount when applicable
+# - Formats the bill clearly with subtotal, tip, and final total sections
+#
+# 2. **pay_bill()**: The Payment Processor
+# - Marks the order as paid in the system
+# - Prevents double-payment by checking if the bill is already settled
+# - Provides appropriate confirmation messages including the final amount
+# - Maintains payment records while clearing active order state
+#
+# 3. **add_tip()**: The Gratuity Handler
+# - Supports both percentage-based tips (e.g., 15%) and fixed amount tips (e.g., $5)
+# - Calculates proper tip amounts based on the subtotal
+# - Stores tip information for bill generation
+# - Provides confirmation with updated totals
+#
+# Together, these tools create a complete financial transaction cycle for Maya's bartending service, enabling the full customer experience from ordering through payment. The final line registers all these tools (along with ordering tools) with the LLM, making them available for Maya to use when she determines they're needed during conversation.
+#
+# *Note: It actually isn't possible to pay your bill in the current version of application. This is a placeholder as there wasn't enough time to implement a simulated payment processing system, like that found in a video game.*
+
+# %%
 @tool
 def get_bill() -> str:
     """Calculates the total bill for all items ordered in this session."""
@@ -1085,6 +1290,8 @@ def get_bill() -> str:
     else:
         return f"Your bill:\n{bill_text}\n\nTotal: ${subtotal:.2f}"
 
+
+# %%
 @tool
 def pay_bill() -> str:
     """Mark the customer's bill as paid."""
@@ -1110,6 +1317,8 @@ def pay_bill() -> str:
     else:
         return f"Thank you for your payment of ${subtotal:.2f}! We hope you enjoyed your drinks at MOK 5-ha."
 
+
+# %%
 @tool
 def add_tip(percentage: float = 0.0, amount: float = 0.0) -> str:
     """Add a tip to the bill. Can specify either a percentage or a fixed amount.
@@ -1154,6 +1363,22 @@ def add_tip(percentage: float = 0.0, amount: float = 0.0) -> str:
 # List of all tools for the LLM
 tools = [get_menu, add_to_order, clear_order, get_order, confirm_order, place_order, get_recommendation, get_bill, pay_bill, add_tip]
 
+
+# %% [markdown]
+# ### Model Initialization: Strategic Placement in the Codebase
+#
+# The model initialization is positioned late in the notebook for several deliberate reasons:
+#
+# 1. **Tool Dependency**: The LLM is bound to the tools **(bind_tools(tools))** which must be defined first - all the drink ordering, bill processing, and recommendation tools need to exist before the model can be initialized with them.
+# 2. **Configuration Dependencies**: The model requires configuration parameters that depend on earlier sections, including environment variables and logging setup.
+# 3. **Execution Order**: This follows the logical flow from:
+#     - Setting up environment
+#     - Defining RAG components
+#     - Creating tools
+#     - Finally initializing the model that will use these components
+#
+# 4. **Efficient Resource Usage**: Delaying model initialization until just before it's needed conserves memory and API resources, as the Gemini model connection isn't established until necessary.
+
 # %% id="P-mA2edJXlkb"
 # Model initialization
 def initialize_llm():
@@ -1185,6 +1410,23 @@ def initialize_llm():
         raise
 
 llm = initialize_llm()
+
+# %% [markdown]
+# # Maya's Voice: The Text-to-Speech Integration
+#
+# The **get_voice_audio()** function adds voice capabilities to Maya, transforming her from a text-only interface to a speaking bartender. This function features:
+#
+# 1. **Text-to-Speech Conversion**: Leverages the Cartesia API to convert Maya's text responses into natural-sounding audio
+# 2. **Pronunciation Enhancement**: Intelligently replaces "MOK 5-ha" with "Moksha" for better pronunciation, supporting the philosophical theme
+# 3. **Robust Error Handling**: Uses the tenacity retry system to handle network issues and API rate limits
+# 4. **High-Quality Audio**: Configures specific audio parameters (WAV format, 24kHz sample rate) for clear, high-fidelity speech
+# 5. **Performance Optimization**: Returns binary audio data ready for direct playback in the Gradio interface
+#
+# This component significantly enhances user engagement by:
+# - Adding a personal, human-like dimension to Maya's interactions
+# - Creating a more immersive bar experience with audible responses
+# - Supporting the "Moksha" philosophical theme with proper pronunciation
+# - Making the interface more accessible to users who prefer listening over reading
 
 # %% id="YQIgKJOeIE5q"
 # Define retryable exceptions for Cartesia if known, otherwise use generic ones
@@ -1254,76 +1496,15 @@ def get_voice_audio(text_to_speak: str) -> bytes | None:
         logger.exception(f"Unexpected error generating voice audio with Cartesia: {e}")
         return None
 
-# %% id="5rsFNoUSIYjc"
+# %% [markdown]
 # # Gradio Interface Implementation
-
-# %% id="UYT5yCeG1iBT" outputId="c7387870-329d-4c76-dab3-793978de5a35"
-# Creating our own custom synthwave '84 inspired theme
-
-# Synthwave '84 Inspired Theme Definition
-# Color Palette
-synth_background_dark = "#2a2139"
-synth_background_med = "#3b3269" 
-synth_text = "#f9f7f3"
-synth_pink = "#ff79c6"
-synth_cyan = "#80ffea"
-synth_purple = "#bd93f9"
-synth_orange = "#ffb86c"
-synth_yellow = "#f1fa8c"
-
-# Font
-synth_font = fonts.GoogleFont("Roboto Mono")
-
-# Create the theme using .set()
-synthwave_theme = gr.themes.Default(
-    font=synth_font,
-    font_mono=synth_font,
-).set(
-    # Backgrounds
-    body_background_fill=synth_background_dark,
-    background_fill_primary=synth_background_dark,
-    background_fill_secondary=synth_background_dark, 
-    block_background_fill=synth_background_dark,     
-
-    # Text
-    body_text_color=synth_text,
-    error_text_color=synth_pink,
-    input_background_fill="#f9f7f3",  # Light background for input
-    input_border_color=synth_cyan,
-    input_placeholder_color=colors.gray.c500,
-    slider_color=synth_pink,
-
-    # Borders
-    border_color_primary=synth_purple,
-    border_color_accent=synth_cyan,
-    block_border_width="1px",
-    block_border_color=synth_purple,
-
-    # Buttons
-    button_primary_background_fill=synth_purple,
-    button_primary_background_fill_hover=synth_cyan,
-    button_primary_text_color=synth_background_dark,
-    button_secondary_background_fill=synth_cyan,
-    button_secondary_background_fill_hover=synth_pink,
-    button_secondary_text_color=synth_background_dark,
-    button_cancel_background_fill=synth_orange,
-    button_cancel_text_color=synth_background_dark,
-
-    # Block appearance
-    block_label_background_fill=synth_background_med, 
-    block_label_text_color=synth_text,
-    block_title_text_color=synth_cyan,
-    block_radius=sizes.radius_md,
-    block_shadow="*shadow_drop_lg",
-
-    # Spacing
-    layout_gap=sizes.spacing_md,
-)
-
-print("Synthwave '84 inspired Gradio theme created (forcing dark block/input backgrounds).")
 
 # %% [markdown]
 # ## Upload or Generate Bartender Avatar
+#
+# In this code cell, we're downloading an image of our bartender so that it can be used within Gradio's interface. It was generated using Gemini 2.5 Flash in AI Studio.
+#
+# *Note: Add image embed of AI studio screenshot*
 
 # %%
 # Default avatar URL - fixed source for consistent experience
@@ -1355,6 +1536,25 @@ plt.show()
 avatar_path = "bartender_avatar.jpg"
 avatar_image.save(avatar_path)
 print(f"Avatar saved to {avatar_path}")
+
+# %% [markdown]
+# ## The Interface Handler: Connecting Maya to the User Interface
+#
+# The **handle_gradio_input()** function serves as the critical bridge between Gradio's web interface and Maya's AI functionality. This connector function:
+#
+# 1. **Processes User Input**: Receives text input from the Gradio UI and passes it to the core **process_order** function
+# 2. **Maintains Conversation State**: Manages and transfers session history and order state between the UI and the backend logic
+# 3. **Integrates Voice Output**: Automatically calls the text-to-speech functionality for each of Maya's responses
+# 4. **Handles UI Updates**: Returns multiple values to update different UI components:
+#     - Clears the input field (by returning empty string)
+#     - Updates the chat history display
+#     - Updates the order tracking state
+#     - Provides audio data for playback in the UI
+# 5. **Logs Interactions**: Maintains detailed logs of the user-bartender interaction for debugging
+#
+# This function encapsulates the complete input/output cycle of the user interface, ensuring Maya's text responses and voice outputs are properly synchronized. It's the final integration point that brings together all of Maya's capabilities (order processing, RAG-enhanced conversation, voice synthesis) into a cohesive user experience.
+#
+# Without this handler, Maya's sophisticated backend would remain disconnected from the user-facing Gradio interface.
 
 # %% id="KgbB7vlLIdiG"
 def handle_gradio_input(
@@ -1402,6 +1602,38 @@ def clear_chat_state() -> Tuple[List, List, List, None]:
 
 # %% [markdown] id="YDudVg8TIlvu"
 # # Launch the Gradio Interface
+
+# %% [markdown]
+# # The Bartender Interface: Maya's Visual Presentation
+#
+# The **launch_bartender_interface()** function creates Maya's visual presence and interactive environment. This function:
+#
+# 1. Creates the Visual Experience:
+#     - Sets up the Ocean theme for a cohesive dark appearance
+#     - Displays the MOK 5-ha bar header with emojis (🍹👋)
+#     - Presents Maya's welcoming introduction message
+#
+# 2. Manages Application State:
+#     - Initializes conversation history storage
+#     - Maintains order tracking state between interactions
+#
+# 3. Structures the Visual Layout:
+#     - Creates a two-column design with Maya's avatar on the left
+#     - Positions the chat interface on the right
+#     - Ensures responsive scaling for different screen sizes
+#
+# 4. Integrates Multi-Modal Elements:
+#     - Displays Maya's avatar image
+#     - Shows text conversation history
+#     - Embeds audio playback for Maya's voice responses
+#     - Provides text input for customer messages
+#
+# 5. Sets Up Event Handlers:
+#     - Connects the text input to the handle_gradio_input function
+#     - Enables both Enter key and button click submission
+#     - Provides a conversation reset button
+#
+# This function completes Maya's implementation by providing the visual interface that customers interact with. The combination of avatar imagery, text chat, and voice responses creates an immersive bartending experience that goes beyond simple text interaction.
 
 # %% id="7E6cgjryIqdV"
 def launch_bartender_interface():
@@ -1471,5 +1703,11 @@ def launch_bartender_interface():
 # # Run the Bartending Agent 🍹👋
 
 # %% id="BBPtIMysHwnz" outputId="90990cb8-1f04-487a-8d71-4efbd62b8737"
-# Launch the interface when this cell is executed
+# Launches the interface when this cell is executed
 launch_bartender_interface()
+
+# %% [markdown]
+# # Limitations
+#
+# - Maya will still pronounce symbols (e.g. *, =, etc.)
+# - 
