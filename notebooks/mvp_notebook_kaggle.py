@@ -13,16 +13,45 @@
 # ---
 
 # %% [markdown]
-# # Gen AI Intensive Course Capstone 2025Q1: Bartending Agent 🍹🍸
+# # Gen AI Intensive Course Capstone 2025Q1: Bartending Agent 🍸🍺
 
 # %% [markdown]
-# ## Use Case: 📝
+# ## Use Case: 🥂
+#
+# Proof-of-Concept for an agentic AI that can take customer orders, make recommendations, and engage with customers with potentially meaningful conversations, all while maintaining a friendly and professional demeanor.
 
 # %% [markdown]
-# ## How it Works: 🤖
+# ## How it Works: 🫗
+#
+# Users place orders through the Gradio UI, which the agent processes. The agent then engages in small talk and, after several exchanges, asks if the user wants another drink. When finished, the agent tallies the tab and thanks the user for their visit.
 
 # %% [markdown]
-# ## Capabilities Used: 📈
+# ## Capabilities Used: 🦾
+#
+# - **Function Calling**:
+# The agent uses LangChain and Gemini API function calling to process user orders and interact with tools (e.g., menu retrieval, order management).
+#
+# - **Agent**:
+# The notebook implements an agentic workflow, where the AI acts as a bartender, managing conversation, state, and tool invocation.
+#
+# - **Retrieval Augmented Generation (RAG)**:
+# The code includes logic for augmenting responses with external information (e.g., menu, order state).
+#
+# - **Vector search/vector store/vector database**:
+# Via chromadb, vector search/storage is supported for use in RAG.
+#
+# - **Audio Understanding**:
+# The notebook implements Text-to-Speech via Cartesia API, demonstrating audio processing capabilities.
+#
+# - **Long Context Window**:
+# The conversation management system maintains and processes extended interaction history.
+#
+# - **Embeddings**:
+# The system uses embeddings to vectorize documents and queries for semantic matching in the RAG pipeline.
+#
+# - **Structured Output/JSON Mode**:
+# The ordering system produces structured responses with consistent formats for order details, billing information, and drink recommendations.
+#
 
 # %% [markdown] id="0TCdSlfrF8Xx"
 # # Setup and Installation 📦💻
@@ -113,7 +142,96 @@ logger = logging.getLogger(__name__)
 # %% [markdown]
 # # API Key Setup (WIP) 🤖
 #
-# To be used on Kaggle
+# For our API Key setup, we'll need one for both **Gemini** and **Cartesia**.
+#
+#
+
+# %% [markdown]
+# ## Accessing the Gemini API and Setting Up Billing
+#
+# ### Getting Access to Gemini API
+#
+# 1. Create a Google Cloud Account
+#  - Go to Google Cloud Console
+#  - Sign in with your Google account
+#  - Complete the registration process if you're new to Google Cloud
+# 2. Create a New Project
+#  - Click on the project dropdown at the top of the page
+#  - Click "New Project"
+#  - Enter a project name and select an organization (if applicable)
+#  - Click "Create"
+# 3. Enable the Gemini API
+#  - Go to Google AI Studio
+#  - Sign in with your Google account
+#  - Click "Get API key"
+#  - If prompted, create a new API key
+#  - Copy and save your API key in a secure location
+#
+# ### Setting Up Billing
+#
+# 1. Enable Billing for Your Project
+#  - Go to Google Cloud Console
+#  - Select your project
+#  - In the left navigation menu, click on "Billing"
+#  - Click "Link a billing account"
+#  - Either select an existing billing account or create a new one
+#  - Follow the prompts to add your payment method
+# 2. Configure Billing for Gemini API
+#  - Go to Google AI Platform Billing
+# Select your billing account
+# Click on "Manage billing accounts"
+# Ensure that your project is linked to this billing account
+# Set up budget alerts if desired to monitor costs
+#
+# ### Verify API Access with Billing
+# Return to your Google AI Studio
+# Confirm your API key is active
+# Check that your usage quota reflects your billing plan
+#
+# ### Troubleshooting Common Issues
+#
+# - If you receive quota errors, verify your billing is properly set up
+# - For "API not enabled" errors, ensure the Gemini API is activated for your project
+# - If experiencing authentication issues, generate a new API key
+# - Remember that the specific Gemini model used in this project **(gemini-2.5-flash-preview-04-17)** may have different pricing than other Gemini models.
+
+# %% [markdown]
+# ## How to Obtain a Cartesia API Key (Free Tier)
+#
+# Step 1: Create a Cartesia Account
+#
+# 1. Visit the Cartesia website
+# 2. Click on "Sign Up" or "Get Started"
+# 3. Complete the registration form with your information
+# 4. Verify your email address
+#
+# Step 2: Navigate to the API Dashboard
+#
+# 1. Log in to your Cartesia account
+# 2. Go to the Dashboard or Developer section
+# 3. Look for "API Keys" or "API Management"
+#
+# Step 3: Generate Your API Key
+#
+# 1. Click on "Create New API Key" or "Generate Key"
+# 2. Name your key (e.g., "Bartender Agent Project")
+# 3. Select the free tier option
+# 4. Accept the terms of service
+#
+# Step 4: Configure Your API Access
+#
+# 1. Select which Cartesia services you need (**Text-to-Speech** for our bartender agent)
+# 2. Set any usage limitations for the free tier
+# 3. Complete the API key creation process
+#
+# ### Free Tier Limitations
+#
+# - Limited number of API calls per day/month
+# - Access to a subset of voices
+# - Potentially higher latency than paid tiers
+# - Watermarks or attribution requirements may apply
+#
+# For our bartender agent specifically, the free tier should be sufficient for demonstration and testing purposes, though for production use you might need to consider a paid tier for more consistent performance.
 
 # %% [markdown] id="QyccDKQIGxxT"
 # # Bartending Agent Implementation 🤖
@@ -1504,75 +1622,7 @@ def get_voice_audio(text_to_speak: str) -> bytes | None:
 #
 # In this code cell, we're downloading an image of our bartender so that it can be used within Gradio's interface. It was generated using Gemini 2.5 Flash in AI Studio.
 #
-# *Note: Add image embed of AI studio screenshot*
-
-# %%
-# Creating our own custom synthwave '84 inspired theme
-
-# Synthwave '84 Inspired Theme Definition
-# Color Palette
-synth_background_dark = "#2a2139"
-synth_background_med = "#3b3269" 
-synth_text = "#f9f7f3"
-synth_pink = "#ff79c6"
-synth_cyan = "#80ffea"
-synth_purple = "#bd93f9"
-synth_orange = "#ffb86c"
-synth_yellow = "#f1fa8c"
-
-# Font
-synth_font = fonts.GoogleFont("Roboto Mono")
-
-# Create the theme using .set()
-synthwave_theme = gr.themes.Default(
-    font=synth_font,
-    font_mono=synth_font,
-).set(
-    # Backgrounds
-    body_background_fill=synth_background_dark,
-    background_fill_primary=synth_background_dark,
-    background_fill_secondary=synth_background_dark, 
-    block_background_fill=synth_background_dark,     
-
-    # Text
-    body_text_color=synth_text,
-    error_text_color=synth_pink,
-    input_text_color="#000000",  # Set input text to black for better readability
-
-    # Borders
-    border_color_primary=synth_purple,
-    border_color_accent=synth_cyan,
-    block_border_width="1px",
-    block_border_color=synth_purple,
-
-    # Buttons
-    button_primary_background_fill=synth_purple,
-    button_primary_background_fill_hover=synth_cyan,
-    button_primary_text_color=synth_background_dark,
-    button_secondary_background_fill=synth_cyan,
-    button_secondary_background_fill_hover=synth_pink,
-    button_secondary_text_color=synth_background_dark,
-    button_cancel_background_fill=synth_orange,
-    button_cancel_text_color=synth_background_dark,
-
-    # Inputs / Sliders / etc.
-    input_background_fill=synth_background_dark, 
-    input_border_color=synth_cyan,
-    input_placeholder_color=colors.gray.c500,
-    slider_color=synth_pink,
-
-    # Block appearance
-    block_label_background_fill=synth_background_med, 
-    block_label_text_color=synth_text,
-    block_title_text_color=synth_cyan,
-    block_radius=sizes.radius_md,
-    block_shadow="*shadow_drop_lg",
-
-    # Spacing
-    layout_gap=sizes.spacing_md,
-)
-
-print("Synthwave '84 inspired Gradio theme created (forcing dark block/input backgrounds).")
+# ![Maya the Bartender](https://github.com/gen-ai-capstone-project-bartender-agent/MOK-5-ha/blob/main/assets/ai_studio_bartender_image_generation.png?raw=true "Maya from AI Studio")
 
 # %%
 # Default avatar URL - fixed source for consistent experience
@@ -1769,6 +1819,24 @@ def launch_bartender_interface():
 
 # %% [markdown] id="OjZFOOFpItNX"
 # # Run the Bartending Agent 🍹👋
+
+# %% [markdown]
+# For the intended experience, I recommend using your computer's or mobile device's **built-in dictation feature** to interact with Maya. Either that, or use [Wispr AI](https://wispr.ai) as I have.
+#
+# - **Windows**: Available via the **Speech Recognition** feature in **Settings**
+#
+# - **macOS**: Available via the **Dictation** feature in **System Preferences**
+#
+# - **Google Chrome**: Available via microphone icon in the address bar
+#
+# - **iOS**: Available via microphone key on the virtual keyboard
+#
+# - **Android**: Available via the **Voice Typing** feature in **Settings** 
+#     - or **Google Keyboard** via microphone icon on keyboard
+#
+#
+# Follow the **public URL** that will appear after launching the cell below, as some functionality breaks within the code cell. Should look something like this:
+# * Running on public URL: https://bb30e51844a537e953.gradio.live
 
 # %% id="BBPtIMysHwnz" outputId="90990cb8-1f04-487a-8d71-4efbd62b8737"
 # Launches the interface when this cell is executed
