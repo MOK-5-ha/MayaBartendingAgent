@@ -2,11 +2,19 @@
 
 <cite>
 **Referenced Files in This Document**   
-- [main.py](file://main.py)
-- [bartending_agent.py](file://bartending_agent.py)
-- [requirements.txt](file://requirements.txt)
-- [README.md](file://README.md)
+- [README.md](file://README.md) - *Completely overhauled with detailed project description and docs in commit f0552e192646beff2b130a553a58c379e23ddbc2*
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb) - *Complete self-contained implementation, updated in commit f0552e192646beff2b130a553a58c379e23ddbc2*
+- [gradio_ui_testing.ipynb](file://notebooks/gradio_ui_testing.ipynb) - *Historical: UI development and testing*
+- [mvp_notebook_kaggle.ipynb](file://notebooks/mvp_notebook_kaggle.ipynb) - *Historical: MVP development notebook*
 </cite>
+
+## Update Summary
+**Changes Made**   
+- Updated the entire document to reflect the complete overhaul of the README and the implementation details in the submission notebook.
+- Added new sections on AI Capabilities, Architecture Overview, and Use Cases based on the updated README.
+- Removed outdated sections and replaced them with accurate descriptions of the current implementation.
+- Updated the project structure to reflect the actual implementation in the submission notebook.
+- Added new diagrams based on the updated architecture described in the README.
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -29,17 +37,14 @@ The system is designed for three primary purposes: interactive simulation, AI de
 
 **Section sources**
 - [README.md](file://README.md#L1-L35)
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
 
 ## Project Structure
 
 The project follows a modular structure with clear separation between frontend interface, backend logic, and configuration. The root directory contains core executable files and dependency definitions, while notebooks are used for development and testing.
 
 Key components include:
-- `main.py`: Entry point for the Gradio web application
-- `bartending_agent.py`: Core logic module handling LLM interaction, order processing, and TTS
-- `requirements.txt`: Lists all external dependencies required for the system
+- `submission_notebook.ipynb`: Complete self-contained implementation with all functionality
 - `notebooks/`: Contains Jupyter notebooks for prototyping and testing
 - `README.md`: Provides setup instructions and basic usage guidance
 
@@ -48,27 +53,20 @@ This organization supports both rapid development and deployment, with the main 
 ```mermaid
 graph TB
 A[Project Root] --> B[notebooks/]
-A --> C[main.py]
-A --> D[bartending_agent.py]
-A --> E[requirements.txt]
-A --> F[README.md]
-B --> G[gradio_ui_testing.ipynb]
-B --> H[mvp_notebook_kaggle.ipynb]
-B --> I[submission_notebook.ipynb]
+A --> C[submission_notebook.ipynb]
+A --> D[README.md]
+B --> E[gradio_ui_testing.ipynb]
+B --> F[mvp_notebook_kaggle.ipynb]
+B --> G[submission_notebook.ipynb]
 C --> J[Gradio Interface]
-D --> K[Gemini LLM Integration]
-D --> L[Cartesia TTS Engine]
-D --> M[Order Processing Logic]
-E --> N[Dependency Management]
-J --> K
-J --> L
-K --> M
+C --> K[Gemini LLM Integration]
+C --> L[Cartesia TTS Engine]
+C --> M[Order Processing Logic]
 ```
 
 **Diagram sources**
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
-- [requirements.txt](file://requirements.txt#L1-L9)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
+- [README.md](file://README.md#L1-L35)
 
 ## Core Components
 
@@ -82,7 +80,7 @@ The Gradio framework provides a simple yet powerful web interface that enables u
 - Image display of the bartender avatar
 - Clear and submit buttons for managing the session
 
-The interface is defined in `main.py` using Gradio's Blocks API, allowing for flexible layout design and event handling.
+The interface is defined in `submission_notebook.ipynb` using Gradio's Blocks API, allowing for flexible layout design and event handling.
 
 ### Gemini Large Language Model
 The Gemini LLM, accessed through Google's Generative AI SDK, powers the conversational intelligence of the agent. It is responsible for:
@@ -92,7 +90,7 @@ The Gemini LLM, accessed through Google's Generative AI SDK, powers the conversa
 - Providing drink recommendations based on user preferences
 - Explaining the meaning of "MOK 5-ha" as "Moksha" when asked
 
-The model is initialized once at module load time in `bartending_agent.py` and used throughout the session for inference.
+The model is initialized once at module load time in `submission_notebook.ipynb` and used throughout the session for inference.
 
 ### Cartesia Text-to-Speech Engine
 The Cartesia TTS service converts the text responses from Gemini into spoken audio. Key features include:
@@ -101,11 +99,11 @@ The Cartesia TTS service converts the text responses from Gemini into spoken aud
 - Streaming audio generation
 - Pronunciation correction (e.g., "MOK 5-ha" → "Moksha")
 
-The TTS functionality is implemented in the `get_voice_audio` function within `bartending_agent.py`, which handles API calls, error recovery, and audio data processing.
+The TTS functionality is implemented in the `get_voice_audio` function within `submission_notebook.ipynb`, which handles API calls, error recovery, and audio data processing.
 
 **Section sources**
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
+- [README.md](file://README.md#L1-L35)
 
 ## Architecture Overview
 
@@ -132,8 +130,8 @@ style N fill:#bbf,stroke:#333
 ```
 
 **Diagram sources**
-- [main.py](file://main.py#L25-L142)
-- [bartending_agent.py](file://bartending_agent.py#L150-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L25-L2887)
+- [README.md](file://README.md#L1-L35)
 
 ## User Interaction Flow
 
@@ -177,8 +175,8 @@ Gradio->>User : Displays text and plays audio
 ```
 
 **Diagram sources**
-- [main.py](file://main.py#L50-L142)
-- [bartending_agent.py](file://bartending_agent.py#L150-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L50-L2887)
+- [README.md](file://README.md#L1-L35)
 
 ## State Management and Session Handling
 
@@ -189,10 +187,10 @@ The system maintains two primary state objects:
 - **Conversation History**: A list of message dictionaries containing role (user/assistant) and content
 - **Order State**: A list of ordered drink dictionaries containing name and price
 
-These states are managed through Gradio's `gr.State` components in `main.py`, which preserve data across user interactions within a session.
+These states are managed through Gradio's `gr.State` components in `submission_notebook.ipynb`, which preserve data across user interactions within a session.
 
 ### Stateless Function Design
-All core functions in `bartending_agent.py` are designed to be stateless:
+All core functions in `submission_notebook.ipynb` are designed to be stateless:
 - `process_order` accepts current states as parameters and returns updated versions
 - `get_voice_audio` takes only the text to synthesize and returns audio data
 - No global state variables are modified directly
@@ -209,8 +207,8 @@ When a user submits input:
 This creates a clean data flow where state transitions are explicit and controlled.
 
 **Section sources**
-- [main.py](file://main.py#L50-L142)
-- [bartending_agent.py](file://bartending_agent.py#L150-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L50-L2887)
+- [README.md](file://README.md#L1-L35)
 
 ## Error Handling and Resilience
 
@@ -251,7 +249,8 @@ Comprehensive logging is implemented using Python's logging module:
 This facilitates debugging and monitoring without overwhelming users with technical output.
 
 **Section sources**
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
+- [README.md](file://README.md#L1-L35)
 
 ## System Context Diagram
 
@@ -261,25 +260,23 @@ The following diagram illustrates the complete system context, showing all major
 graph TD
 A[User] --> B[Web Browser]
 B --> C[Gradio Server]
-C --> D[main.py]
-D --> E[bartending_agent.py]
-E --> F[Gemini API]
-E --> G[Cartesia API]
-E --> H[Environment Variables]
-H --> I[GEMINI_API_KEY]
-H --> J[CARTESIA_API_KEY]
-F --> K[Google Cloud]
-G --> L[Cartesia Cloud]
-D --> M[Static Assets]
-M --> N[Avatar Image]
+C --> D[submission_notebook.ipynb]
+D --> E[Gemini API]
+D --> F[Cartesia API]
+D --> G[Environment Variables]
+G --> H[GEMINI_API_KEY]
+G --> I[CARTESIA_API_KEY]
+E --> J[Google Cloud]
+F --> K[Cartesia Cloud]
+D --> L[Static Assets]
+L --> M[Avatar Image]
 style A fill:#f9f,stroke:#333
+style J fill:#9cf,stroke:#333
 style K fill:#9cf,stroke:#333
-style L fill:#9cf,stroke:#333
 ```
 
 **Diagram sources**
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
 - [README.md](file://README.md#L1-L35)
 
 ## Primary Use Cases
@@ -316,6 +313,5 @@ The codebase provides learning opportunities in:
 The clear separation of concerns and comprehensive comments make it suitable for teaching AI application development concepts.
 
 **Section sources**
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
 - [README.md](file://README.md#L1-L35)

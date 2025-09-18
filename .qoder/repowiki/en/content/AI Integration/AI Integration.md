@@ -2,147 +2,164 @@
 
 <cite>
 **Referenced Files in This Document**   
-- [bartending_agent.py](file://bartending_agent.py)
-- [main.py](file://main.py)
-- [requirements.txt](file://requirements.txt)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb) - *Complete implementation with Gemini, FAISS, and Cartesia integration*
+- [rag-bartender-bot.ipynb](file://notebooks/rag-bartender-bot.ipynb) - *RAG pipeline development notebook*
+- [gradio_ui_testing.ipynb](file://notebooks/gradio_ui_testing.ipynb) - *UI testing and development*
+- [mvp_notebook_kaggle.ipynb](file://notebooks/mvp_notebook_kaggle.ipynb) - *MVP development for Kaggle submission*
+- [agent-building-bartending-bot.ipynb](file://notebooks/agent-building-bartending-bot.ipynb) - *Agent architecture development*
+- [README.md](file://README.md) - *Updated with comprehensive AI integration details*
 </cite>
+
+## Update Summary
+**Changes Made**   
+- Updated documentation to reflect complete migration to notebook-based implementation
+- Added detailed coverage of Retrieval Augmented Generation (RAG) using FAISS
+- Enhanced explanation of Gemini LLM integration within Jupyter notebook environment
+- Added documentation for function calling and structured output patterns
+- Removed references to standalone Python files that no longer exist
+- Updated architecture overview to reflect actual implementation in submission notebook
 
 ## Table of Contents
 1. [Introduction](#introduction)
 2. [Project Structure](#project-structure)
 3. [Core Components](#core-components)
 4. [Architecture Overview](#architecture-overview)
-5. [Detailed Component Analysis](#detailed-component-analysis)
-6. [Gemini LLM Integration and Prompt Engineering](#gemini-llm-integration-and-prompt-engineering)
+5. [Gemini LLM Integration and Prompt Engineering](#gemini-llm-integration-and-prompt-engineering)
+6. [Retrieval Augmented Generation with FAISS](#retrieval-augmented-generation-with-faiss)
 7. [Response Processing and Conversation State Management](#response-processing-and-conversation-state-management)
 8. [Error Handling and API Resilience](#error-handling-and-api-resilience)
 9. [Generation Configuration and Tuning](#generation-configuration-and-tuning)
 10. [Conclusion](#conclusion)
 
 ## Introduction
-This document provides a comprehensive analysis of the AI integration within the Maya Bartending Agent, focusing on the implementation of the Gemini Large Language Model (LLM) to power a conversational bartender interface. The system leverages Google's Generative AI SDK to enable natural language understanding and response generation, allowing users to place drink orders through a Gradio-based web interface. The agent combines prompt engineering, state management, and text-to-speech synthesis to deliver a cohesive user experience. This documentation details the technical architecture, core logic, and best practices for maintaining and extending the AI functionality.
+This document provides a comprehensive analysis of the AI integration within the Maya Bartending Agent, focusing on the implementation of the Gemini Large Language Model (LLM) to power a conversational bartender interface. The system leverages Google's Generative AI SDK within a Jupyter notebook environment to enable natural language understanding and response generation, allowing users to place drink orders through a Gradio-based web interface. The agent combines prompt engineering, state management, function calling, and text-to-speech synthesis to deliver a cohesive user experience. This documentation details the technical architecture, core logic, and best practices for maintaining and extending the AI functionality.
 
 ## Project Structure
-The project is organized into a modular structure with distinct components for the AI logic, user interface, and configuration. The main application entry point is `main.py`, which initializes the Gradio interface and manages session state. The core AI logic, including LLM interaction and order processing, is encapsulated in `bartending_agent.py`. Notebooks in the `notebooks/` directory suggest iterative development and testing phases, particularly for Kaggle compatibility. Dependencies are managed via `requirements.txt`, which includes critical packages for LLM integration, retry logic, and speech synthesis.
+The project has evolved into a notebook-centric architecture where all core functionality is contained within Jupyter notebooks. The primary implementation is in `submission_notebook.ipynb`, which serves as a self-contained application with all necessary components. This notebook includes the complete agent logic, API integrations, RAG pipeline, and Gradio interface. The `notebooks/` directory contains several supporting notebooks that document the development process: `rag-bartender-bot.ipynb` focuses on the retrieval augmented generation implementation, `gradio_ui_testing.ipynb` was used for UI development, `mvp_notebook_kaggle.ipynb` contains the minimum viable product for Kaggle submission, and `agent-building-bartending-bot.ipynb` documents the agent architecture development. This structure enables rapid iteration and seamless deployment on platforms like Kaggle.
 
 ```mermaid
 graph TB
-subgraph "Core Logic"
-BA[bartending_agent.py]
+subgraph "Core Implementation"
+SN[submission_notebook.ipynb]
 end
-subgraph "UI Layer"
-MP[main.py]
+subgraph "Development & Testing"
+RAG[rag-bartender-bot.ipynb]
+GR[gradio_ui_testing.ipynb]
+MVP[mvp_notebook_kaggle.ipynb]
+AGENT[agent-building-bartending-bot.ipynb]
 end
-subgraph "Configuration"
-RT[requirements.txt]
-ENV[.env]
-end
-subgraph "Testing & Development"
-NB[notebooks/]
-end
-MP --> BA
-MP --> RT
-BA --> RT
-BA --> ENV
-NB --> MP
-NB --> BA
-style BA fill:#f9f,stroke:#333
-style MP fill:#bbf,stroke:#333
+SN --> RAG
+SN --> GR
+SN --> MVP
+SN --> AGENT
+style SN fill:#f9f,stroke:#333
+style RAG fill:#bbf,stroke:#333
 ```
 
 **Diagram sources**
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
-- [requirements.txt](file://requirements.txt#L1-L9)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb)
+- [README.md](file://README.md#L150-L200)
 
 **Section sources**
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb)
+- [README.md](file://README.md#L100-L150)
 
 ## Core Components
-The system's core functionality is divided between two primary files. `main.py` serves as the UI controller, handling user input via Gradio and managing session state for conversation history and drink orders. It delegates the natural language processing and response generation to functions in `bartending_agent.py`. This separation of concerns ensures that the AI logic remains stateless and reusable. The `bartending_agent.py` module is responsible for initializing the Gemini LLM client, constructing prompts with dynamic context, calling the API, processing responses, and updating order state based on heuristic analysis of the LLM output. It also integrates with the Cartesia API for text-to-speech synthesis, providing an audio response to the user.
+The system's core functionality is now entirely contained within Jupyter notebooks, with `submission_notebook.ipynb` serving as the primary implementation. This notebook encapsulates all components: the Gradio UI, Gemini LLM integration, FAISS vector database for RAG, Cartesia TTS integration, and business logic for order processing. The separation of concerns is maintained through code organization rather than file separation, with clearly defined sections for setup, configuration, tool definitions, and interface creation. The notebook imports necessary libraries, configures API keys, defines function tools for order management and billing, implements the RAG pipeline, and creates the interactive Gradio interface—all in a single, executable document. This approach simplifies deployment and ensures consistency across environments.
 
 **Section sources**
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb)
+- [agent-building-bartending-bot.ipynb](file://notebooks/agent-building-bartending-bot.ipynb)
 
 ## Architecture Overview
-The application follows a client-server architecture where the Gradio interface acts as the frontend, and the Python backend processes user input using the Gemini LLM. The flow begins with a user submitting a message through the Gradio textbox. This input, along with the current session history and order state, is passed to the `process_order` function. The function constructs a contextual prompt that includes the menu, current order, conversation history, and a system instruction. This prompt is sent to the Gemini API, which generates a response. The response is then analyzed to update the order state, and the conversation history is appended. Finally, the textual response is converted to speech using the Cartesia TTS service and returned to the UI for playback.
+The application follows a notebook-based architecture where the `submission_notebook.ipynb` serves as both the development environment and production deployment. The flow begins with a user submitting a message through the Gradio interface embedded in the notebook. This input, along with the current session history and order state, is processed by the Maya agent logic within the notebook. The agent constructs a contextual prompt that includes the menu, current order, conversation history, and system instructions. Before calling the Gemini API, the system performs a vector search in the FAISS database to retrieve relevant conversational context. This retrieved context is injected into the prompt using the RAG pattern. The enhanced prompt is sent to the Gemini API, which generates a response using function calling capabilities. The response is processed to update the order state, and the conversation history is appended. Finally, the textual response is converted to speech using the Cartesia TTS service and returned to the UI for playback.
 
 ```mermaid
 sequenceDiagram
 participant User as "User"
 participant Gradio as "Gradio UI"
-participant Main as "main.py"
-participant Agent as "bartending_agent.py"
+participant Notebook as "submission_notebook.ipynb"
 participant Gemini as "Gemini LLM"
+participant FAISS as "FAISS Vector DB"
 participant Cartesia as "Cartesia TTS"
 User->>Gradio : Submit message
-Gradio->>Main : Call handle_gradio_input()
-Main->>Agent : process_order(user_input, history, order)
-Agent->>Agent : Construct prompt with context
-Agent->>Gemini : generate_content()
-Gemini-->>Agent : Response
-Agent->>Agent : Process response & update order
-Agent->>Cartesia : get_voice_audio(response_text)
-Cartesia-->>Agent : Audio bytes
-Agent-->>Main : (response, updated_history, updated_order, audio)
-Main-->>Gradio : Update chatbot, audio, state
+Gradio->>Notebook : Call agent logic
+Notebook->>FAISS : Perform similarity search
+FAISS-->>Notebook : Return relevant context
+Notebook->>Notebook : Construct RAG-enhanced prompt
+Notebook->>Gemini : generate_content() with function calling
+Gemini-->>Notebook : Response with function calls
+Notebook->>Notebook : Process functions & update order
+Notebook->>Cartesia : get_voice_audio(response_text)
+Cartesia-->>Notebook : Audio bytes
+Notebook-->>Gradio : Update chatbot, audio, state
 Gradio-->>User : Display response and play audio
 ```
 
 **Diagram sources**
-- [main.py](file://main.py#L25-L142)
-- [bartending_agent.py](file://bartending_agent.py#L150-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L200-L500)
+- [README.md](file://README.md#L50-L100)
 
-## Detailed Component Analysis
-This section provides an in-depth examination of the key components that enable the AI-driven bartending experience, focusing on the integration points between the LLM, state management, and external services.
+## Gemini LLM Integration and Prompt Engineering
+The integration with the Gemini LLM is achieved through the `google.generativeai` SDK within the Jupyter notebook environment. The model is initialized in the notebook using the `gemini-2.5-flash-preview` model, which supports advanced function calling capabilities. The prompt engineering strategy is central to the agent's ability to function as a competent bartender. The prompt is dynamically constructed for each user interaction, incorporating several critical elements: a system role definition, the current menu, the user's order state, a limited conversation history, and the current user input. This context injection ensures the LLM has all necessary information to generate relevant and accurate responses. The system prompt explicitly defines the agent's persona as a "friendly and helpful bartender" and provides specific instructions for handling various scenarios, such as unclear orders, off-menu requests, and inquiries about the bar's name ("MOK 5-ha", explained as "Moksha").
 
-### Prompt Engineering Strategy
-The prompt engineering strategy is central to the agent's ability to function as a competent bartender. The prompt is dynamically constructed for each user interaction, incorporating several critical elements: a system role definition, the current menu, the user's order state, a limited conversation history, and the current user input. This context injection ensures the LLM has all necessary information to generate relevant and accurate responses. The system prompt explicitly defines the agent's persona as a "friendly and helpful bartender" and provides specific instructions for handling various scenarios, such as unclear orders, off-menu requests, and inquiries about the bar's name ("MOK 5-ha", explained as "Moksha").
+### Function Calling and Structured Output
+The implementation leverages Gemini's function calling capabilities to manage complex interactions. The notebook defines several function tools that the LLM can invoke:
+- **Menu retrieval**: Allows the agent to access detailed menu information
+- **Order management**: Enables adding, removing, or modifying drink orders
+- **Billing system**: Handles price calculation, tip processing, and payment simulation
+- **Recommendation engine**: Provides personalized drink suggestions based on customer preferences
+
+These functions are defined in the notebook with JSON schemas that specify their parameters and return types. When the LLM determines that a function should be called, it returns a structured request that the notebook code executes. The results are then fed back into the conversation, allowing for accurate order processing and transaction management. This approach ensures reliable extraction of structured data from natural language inputs while maintaining the fluidity of conversation.
+
+**Section sources**
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L300-L600)
+- [agent-building-bartending-bot.ipynb](file://notebooks/agent-building-bartending-bot.ipynb#L100-L200)
+
+## Retrieval Augmented Generation with FAISS
+The system implements a Retrieval Augmented Generation (RAG) pattern using FAISS as the vector database to enhance the Gemini LLM's responses with relevant contextual information. The FAISS index is created within the notebook and stores embeddings of conversational content, menu details, and philosophical themes related to "Moksha." When processing a user query, the system first converts the input into an embedding using Google's text-embedding-004 model. This embedding is then used to perform a similarity search against the FAISS index to retrieve the most relevant context chunks. The retrieved context is injected into the prompt before being sent to the Gemini API, allowing the LLM to generate responses that are informed by specific knowledge rather than relying solely on its pretrained knowledge.
+
+### RAG Pipeline Implementation
+The RAG pipeline is implemented in the `rag-bartender-bot.ipynb` notebook and integrated into the main `submission_notebook.ipynb`. The pipeline consists of several key components:
+- **Embedding model**: Google's text-embedding-004 for converting text to vectors
+- **Vector store**: FAISS for efficient similarity search and storage
+- **Retriever**: Logic for querying the vector store and formatting results
+- **Context injector**: Mechanism for incorporating retrieved content into prompts
+
+The system maintains a knowledge base of approximately 100 context chunks, including menu items, preparation methods, philosophical concepts, and common customer interactions. Each chunk is embedded and stored in the FAISS index with metadata indicating its type and relevance. During inference, the top 3-5 most similar chunks are retrieved and formatted into a coherent context section that is prepended to the main prompt. This approach significantly improves the accuracy and relevance of the agent's responses, particularly for complex queries about drink recommendations or philosophical discussions.
 
 ```mermaid
 flowchart TD
-Start([User Input]) --> ConstructPrompt["Construct Prompt"]
-ConstructPrompt --> AddRole["Add System Role"]
-AddRole --> AddMenu["Add Menu via get_menu_text()"]
-AddMenu --> AddOrder["Add Current Order State"]
-AddOrder --> AddHistory["Add Limited Conversation History"]
-AddHistory --> AddUserInput["Add Current User Input"]
-AddUserInput --> AddBartenderPrefix["Add 'Bartender:' Prefix"]
-AddBartenderPrefix --> CallAPI["Call Gemini API"]
+Start([User Input]) --> Embedding["Convert to Embedding"]
+Embedding --> Search["FAISS Similarity Search"]
+Search --> Retrieve["Retrieve Top K Context Chunks"]
+Retrieve --> Format["Format Retrieved Context"]
+Format --> Inject["Inject into Prompt"]
+Inject --> CallAPI["Call Gemini API with RAG-enhanced prompt"]
 CallAPI --> ProcessResponse["Process LLM Response"]
-ProcessResponse --> UpdateOrder["Update Order State (Heuristic)"]
-UpdateOrder --> ReturnResponse["Return Text & Updated State"]
+ProcessResponse --> ReturnResponse["Return Enhanced Response"]
 ```
 
 **Diagram sources**
-- [bartending_agent.py](file://bartending_agent.py#L180-L250)
+- [rag-bartender-bot.ipynb](file://notebooks/rag-bartender-bot.ipynb#L50-L200)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L400-L450)
 
 **Section sources**
-- [bartending_agent.py](file://bartending_agent.py#L180-L250)
-
-## Gemini LLM Integration and Prompt Engineering
-The integration with the Gemini LLM is achieved through the `google.generativeai` SDK. The model is initialized once at the module level in `bartending_agent.py` using the `gemini-2.0-flash` model, ensuring efficient resource usage across requests. The `_call_gemini_api` function serves as a wrapper around the `model.generate_content()` method, incorporating retry logic via the `tenacity` library to handle transient API failures. The prompt is constructed as a list of strings, which are joined into a single string before being passed to the API. This approach allows for modular construction of the prompt context, making it easy to add or remove sections like the menu or order history.
-
-### Context Injection and Conversation History
-Context injection is implemented by programmatically building the `prompt_context` list. The menu is retrieved via the `get_menu_text()` function, which formats the static `menu` dictionary into a readable string. The current order state is formatted as a bulleted list of drink names and prices. The conversation history is limited to the last 10 entries to prevent the prompt from exceeding token limits, a common practice in LLM applications. This history is appended in chronological order, with each entry labeled by role (User or Assistant), providing the LLM with a clear dialogue context. The current user input is added at the end, followed by the "Bartender:" prefix, which acts as a trigger for the LLM to generate its response.
-
-**Section sources**
-- [bartending_agent.py](file://bartending_agent.py#L180-L250)
+- [rag-bartender-bot.ipynb](file://notebooks/rag-bartender-bot.ipynb)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L400-L500)
 
 ## Response Processing and Conversation State Management
-The response processing pipeline is responsible for extracting meaningful actions from the LLM's output and managing the conversation state. After receiving a response from the Gemini API, the system first checks for errors or safety blocks. If the response is valid, the text is extracted and logged. The pipeline then uses a heuristic to update the drink order: it scans the response text for the name of a menu item and checks for keywords like "added" or "coming right up" to confirm an order has been placed. If a match is found and the item is not already the last in the order, it is appended to the `updated_order` list. This simple but effective method allows the system to maintain state without requiring complex parsing or a formal grammar.
+The response processing pipeline is responsible for extracting meaningful actions from the LLM's output and managing the conversation state. After receiving a response from the Gemini API, the system first checks for function calls that need to be executed. If function calls are present, they are processed in sequence, with each function's result potentially modifying the order state or retrieving additional information. After all functions are processed, the final response text is generated and extracted. The pipeline then updates the conversation history by appending both the user input and the assistant response, preserving context for future interactions.
 
 ### Conversation State in Gradio
-State management is handled through Gradio's `gr.State` components. `main.py` defines two state variables: `history_state` and `order_state`, which are passed as inputs to the `handle_gradio_input` function. These states are updated within the `process_order` function and returned as outputs, causing Gradio to persist the new state for the next interaction. This pattern ensures that the core AI logic in `bartending_agent.py` remains stateless and focused on processing, while the UI framework manages the session lifecycle. The `clear_chat_state` function resets both states to empty lists, providing a clean slate for a new conversation.
+State management is handled through Gradio's `gr.State` components within the notebook. The `submission_notebook.ipynb` defines state variables for `history`, `order`, and `bill` that are passed through the Gradio interface. These states are updated after each interaction and returned as outputs, causing Gradio to persist the new state for the next turn. This pattern ensures that the conversation maintains context across multiple exchanges while running entirely within the notebook environment. The state is stored in memory during the session, allowing for coherent multi-turn conversations. The notebook also includes a reset function that clears all state variables, providing a clean slate for new customers.
 
 **Section sources**
-- [bartending_agent.py](file://bartending_agent.py#L252-L300)
-- [main.py](file://main.py#L50-L70)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L600-L800)
+- [gradio_ui_testing.ipynb](file://notebooks/gradio_ui_testing.ipynb#L100-L150)
 
 ## Error Handling and API Resilience
-The system implements robust error handling at multiple levels to ensure reliability. At the API integration level, the `tenacity_retry` decorator is applied to the `_call_gemini_api` function, enabling automatic retries for transient failures with exponential backoff. This handles common issues like network timeouts or rate limiting. Within the `process_order` function, a comprehensive try-except block catches any unhandled exceptions, preventing the application from crashing. The system checks the `response.candidates` and `prompt_feedback` objects to diagnose and report specific issues, such as safety blocks or empty responses, providing user-friendly error messages. Similarly, the `get_voice_audio` function includes retry logic and exception handling for the Cartesia TTS service, ensuring that a failure in speech synthesis does not disrupt the core conversation flow.
+The system implements robust error handling at multiple levels to ensure reliability within the notebook environment. At the API integration level, the code includes try-except blocks around all external API calls, including Gemini LLM requests, FAISS operations, and Cartesia TTS synthesis. For Gemini API calls, the system checks the `response.candidates` and `prompt_feedback` objects to diagnose and report specific issues, such as safety blocks or empty responses, providing user-friendly error messages. The implementation includes exponential backoff retry logic for transient failures, with configurable retry limits and delay intervals. Similarly, the Cartesia TTS integration includes fallback mechanisms and error handling to ensure that speech synthesis failures do not disrupt the core conversation flow. The notebook also validates function call parameters before execution to prevent errors from malformed JSON.
 
 ```mermaid
 flowchart TD
@@ -156,21 +173,24 @@ CheckFinishReason --> |SAFETY| Safety["Respond with Safety Message"]
 CheckFinishReason --> |MAX_TOKENS| Truncated["Respond with Truncated Message"]
 CheckFinishReason --> |Other| OtherError["Respond with Finish Reason"]
 CheckContent --> |Yes| ExtractText["Extract Response Text"]
-ExtractText --> UpdateOrder["Update Order State"]
+ExtractText --> ProcessFunctions["Process Function Calls"]
+ProcessFunctions --> UpdateOrder["Update Order State"]
 UpdateOrder --> ReturnSuccess["Return Success Response"]
 ```
 
 **Diagram sources**
-- [bartending_agent.py](file://bartending_agent.py#L265-L300)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L800-L900)
 
 **Section sources**
-- [bartending_agent.py](file://bartending_agent.py#L265-L300)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L800-L900)
+- [mvp_notebook_kaggle.ipynb](file://notebooks/mvp_notebook_kaggle.ipynb#L200-L250)
 
 ## Generation Configuration and Tuning
-The generation parameters are configured to balance creativity and coherence for a bartender persona. The `temperature` is set to 0.7, which introduces a moderate level of randomness, making the responses feel more natural and conversational without becoming incoherent. The `max_output_tokens` is set to 2048, providing ample space for detailed responses while preventing excessively long outputs. These parameters are passed in a `config_dict` to the `generate_content` method. The system also monitors the `finish_reason` to detect if a response was truncated due to the token limit, appending a "... (response truncated)" message to inform the user. Tuning these parameters is key to achieving the desired personality; a lower temperature (e.g., 0.3) would make the agent more predictable and factual, while a higher temperature (e.g., 1.0) would make it more creative but potentially less reliable. For a bartending agent, the current settings strike an appropriate balance between friendliness and accuracy.
+The generation parameters are configured to balance creativity and coherence for a bartender persona within the notebook environment. The `temperature` is set to 0.7, which introduces a moderate level of randomness, making the responses feel more natural and conversational without becoming incoherent. The `max_output_tokens` is set to 2048, providing ample space for detailed responses while preventing excessively long outputs. These parameters are passed in a `generation_config` object to the `generate_content` method. The system also monitors the `finish_reason` to detect if a response was truncated due to the token limit, appending a "... (response truncated)" message to inform the user. For function calling, the notebook configures the model to prefer function calls when appropriate, with specific instructions for when to use each tool. Tuning these parameters is key to achieving the desired personality; a lower temperature (e.g., 0.3) would make the agent more predictable and factual, while a higher temperature (e.g., 1.0) would make it more creative but potentially less reliable. For a bartending agent, the current settings strike an appropriate balance between friendliness and accuracy.
 
 **Section sources**
-- [bartending_agent.py](file://bartending_agent.py#L260-L263)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L250-L300)
+- [agent-building-bartending-bot.ipynb](file://notebooks/agent-building-bartending-bot.ipynb#L50-L100)
 
 ## Conclusion
-The Maya Bartending Agent demonstrates a well-structured integration of a modern LLM into a conversational application. By leveraging the Gemini API with thoughtful prompt engineering, stateless function design, and robust error handling, the system delivers a functional and engaging user experience. The clear separation between the UI layer (`main.py`) and the AI logic (`bartending_agent.py`) promotes maintainability and scalability. Future enhancements could include a more sophisticated order extraction system using named entity recognition, integration with a vector database for Retrieval-Augmented Generation (RAG) to handle a larger menu, or dynamic adjustment of generation parameters based on user sentiment. The current implementation provides a solid foundation for an AI-powered service agent.
+The Maya Bartending Agent demonstrates a sophisticated integration of multiple AI technologies within a notebook-based architecture. By leveraging the Gemini API with advanced function calling, retrieval augmented generation with FAISS, and thoughtful prompt engineering, the system delivers a functional and engaging user experience. The consolidation of all functionality into `submission_notebook.ipynb` simplifies deployment and ensures consistency across environments, particularly for Kaggle submission. The clear organization within the notebook promotes maintainability and scalability. Future enhancements could include persistent session storage, multi-user support, or integration with real payment systems. The current implementation provides a solid foundation for an AI-powered service agent that successfully combines natural conversation with reliable transaction processing.

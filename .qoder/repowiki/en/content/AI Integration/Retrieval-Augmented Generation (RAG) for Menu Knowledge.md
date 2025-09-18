@@ -5,7 +5,28 @@
 - [bartending_agent.py](file://bartending_agent.py)
 - [main.py](file://main.py)
 - [notebooks/mvp_notebook_kaggle.py](file://notebooks/mvp_notebook_kaggle.py)
+- [README.md](file://README.md) - *Updated in recent commit*
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb) - *Added in recent commit*
 </cite>
+
+## Update Summary
+**Changes Made**   
+- Updated documentation to reflect the complete overhaul of the README with detailed RAG implementation
+- Added new section on RAG Implementation in the submission notebook
+- Updated dependency analysis with new information from the README
+- Added new diagram sources from the updated README
+- Enhanced source tracking system with new file references
+
+**New Sections Added**
+- RAG Implementation in Submission Notebook
+
+**Deprecated/Removed Sections**
+- None
+
+**Source Tracking System Updates and New Source Files**
+- Added [README.md](file://README.md) as referenced file
+- Added [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb) as referenced file
+- Updated section sources with new notebook references
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -17,6 +38,7 @@
 7. [Performance Considerations](#performance-considerations)
 8. [Troubleshooting Guide](#troubleshooting-guide)
 9. [Conclusion](#conclusion)
+10. [RAG Implementation in Submission Notebook](#rag-implementation-in-submission-notebook)
 
 ## Introduction
 This document details the Retrieval-Augmented Generation (RAG) system implemented in the Maya Bartending Agent, enabling accurate and contextually rich responses to customer inquiries about the drink menu. The system leverages FAISS as a vector database to store and retrieve semantically relevant menu information, allowing the agent to answer questions about ingredients, prices, and recommendations without hardcoding responses. By integrating Google's Gemini embedding model, the agent converts menu items and user queries into high-dimensional vectors, facilitating efficient similarity searches. Retrieved results are then injected into the LLM prompt to ground responses in factual data, significantly improving accuracy and reducing hallucinations. This documentation covers the full implementation lifecycle, from indexing at startup to query processing and response generation, including key parameters such as similarity thresholds, top-k retrieval, and handling of out-of-menu queries.
@@ -184,3 +206,9 @@ Common issues with the RAG system include API key configuration, embedding gener
 
 ## Conclusion
 The RAG system implemented in the Maya Bartending Agent significantly enhances the agent's ability to provide accurate, contextually relevant responses to customer inquiries. By leveraging the Gemini embedding model and FAISS vector database, the system enables semantic search over a curated knowledge base of menu items and bartender personality phrases. This approach reduces hallucinations and ensures that responses are grounded in factual data, while still allowing for natural, conversational interactions. The modular design facilitates easy updates to the knowledge base and extension to new domains. Future improvements could include dynamic knowledge base updates, hybrid search combining keyword and semantic matching, and personalized recommendations based on user history.
+
+## RAG Implementation in Submission Notebook
+The submission notebook contains a comprehensive implementation of the RAG system for the Maya Bartending Agent. The RAG implementation is crucial for enhancing the agent's conversational abilities beyond basic drink ordering functionality. The system uses Google's `models/embedding-001` to convert text into numerical vectors and FAISS for efficient similarity search. The RAG pipeline is implemented through several key functions: `get_embedding()` for vectorization, `retrieve_relevant_passages()` for similarity search, and `generate_augmented_response()` for context-aware response generation. The system is designed to be stateless, with all session data passed through function parameters, ensuring compatibility with Gradio's session state management.
+
+**Section sources**
+- [notebooks/submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L288-L340)

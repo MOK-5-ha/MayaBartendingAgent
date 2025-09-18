@@ -79,7 +79,7 @@ graph TB
     C --> D[Gemini LLM - Google AI]
     C --> E[Cartesia TTS - Voice Synthesis]
     C --> F[FAISS - Vector Store]
-    C --> G[Order Management Tools]
+    C --> G[LangChain Function Tools]
     
     H[Menu Knowledge] --> C
     I[Conversation Context] --> F
@@ -91,13 +91,14 @@ graph TB
     J --> M[Recommendation Engine]
 ```
 
-### Core Components
+### Current Architecture
 
 - **`submission_notebook.ipynb`**: Complete self-contained implementation with all functionality
-- **Gradio Interface**: Web-based user interaction layer
+- **Gradio Interface**: Web-based user interaction layer (within notebook)
 - **Maya Agent Logic**: Core business logic, LLM integration, and TTS (all within notebook)
 - **Vector Store**: FAISS for conversational context and RAG
-- **Function Tools**: Order management, billing, and recommendation systems
+- **LangChain Tools**: Order management, billing, and recommendation systems
+- **Function Calling**: Gemini-powered tool invocation for order processing
 
 ---
 
@@ -195,24 +196,24 @@ The notebook is designed to run seamlessly on Kaggle with API keys stored as Kag
 ## 🛠️ Technical Implementation
 
 ### LLM Integration
-- **Model**: Google Gemini 2.5 Flash Preview
-- **Framework**: LangChain for function calling
-- **Context Management**: Dynamic prompt construction with conversation history
+- **Model**: Google Gemini 2.5 Flash
+- **Framework**: LangChain for function calling and tool integration
+- **Context Management**: Dynamic prompt construction with conversation history and phase tracking
 
 ### Vector Database
-- **Engine**: FAISS for persistent storage
-- **Embeddings**: Google's text-embedding-004
-- **Purpose**: RAG pipeline for contextual responses
+- **Engine**: FAISS for in-memory vector storage
+- **Embeddings**: Google's text-embedding-004 model
+- **Purpose**: RAG pipeline for contextual conversation enhancement
 
 ### Text-to-Speech
-- **Service**: Cartesia API
-- **Quality**: 24kHz WAV format
-- **Features**: Custom voice selection and pronunciation optimization
+- **Service**: Cartesia API for high-quality voice synthesis
+- **Quality**: 24kHz WAV format with custom voice configuration
+- **Features**: Pronunciation optimization and audio streaming
 
 ### Web Interface
-- **Framework**: Gradio for rapid prototyping
-- **Features**: Text input, chat history, audio playback
-- **Design**: Two-column layout with Maya's avatar
+- **Framework**: Gradio for rapid prototyping and deployment
+- **Features**: Text input, chat history, audio playback, and avatar display
+- **Design**: Two-column layout optimized for conversational interaction
 
 ---
 
@@ -233,24 +234,28 @@ Maya embodies the philosophical theme of "Moksha" - she's knowledgeable about bo
 MayaBartendingAgent/
 ├── README.md                   # This file
 └── notebooks/
-    ├── submission_notebook.ipynb    # Complete self-contained implementation
-    ├── gradio_ui_testing.ipynb     # Historical: UI development and testing
-    └── mvp_notebook_kaggle.ipynb   # Historical: MVP development notebook
+    ├── agent-building-bartending-bot.ipynb  # Historical: Initial LangGraph function calling implementation
+    ├── gradio_ui_testing.ipynb     # Historical: UI development & testing
+    ├── mvp_notebook_kaggle.ipynb   # Historical: MVP development notebook
+    ├── rag-bartender-bot.ipynb # Historical : Initial RAG implementation
+    └── submission_notebook.ipynb    # Complete self-contained implementation
+
 ```
 
 ### Implementation Architecture
 
-All functionality is contained within `submission_notebook.ipynb`, including:
-- **Setup & Dependencies**: Automatic installation of required packages
-- **API Configuration**: Secure handling of Gemini and Cartesia API keys
-- **Core Agent Logic**: Order processing, conversation management, and state handling
-- **Function Tools**: Menu retrieval, order management, billing, and recommendation systems
-- **RAG Pipeline**: Vector database setup and retrieval-augmented generation using FAISS
-- **Text-to-Speech**: Cartesia integration for voice synthesis
-- **Gradio Interface**: Complete web UI with chat history and audio playback
-- **Deployment**: Ready-to-run implementation for both local and Kaggle environments
+The submission notebook contains a complete, self-contained implementation organized into logical sections:
 
-The historical notebooks showcase the development process and iteration that led to the final submission.
+- **Environment Setup**: Automatic dependency installation and API key configuration
+- **RAG System**: FAISS vector database with Google embeddings for conversation enhancement
+- **LangChain Integration**: Function calling tools for order management, billing, and recommendations
+- **Agent Logic**: Conversation phase management and state tracking across interactions
+- **Gemini LLM**: Natural language understanding with structured tool invocation
+- **Cartesia TTS**: High-quality voice synthesis with pronunciation optimization
+- **Gradio Interface**: Complete web UI with real-time chat and audio playback
+- **Deployment Ready**: Works seamlessly in both local Jupyter and Kaggle environments
+
+The historical notebooks (`gradio_ui_testing.ipynb` and `mvp_notebook_kaggle.ipynb`) showcase the iterative development process that led to the final submission, demonstrating various approaches to UI design, agent architecture, and integration patterns.
 
 ---
 

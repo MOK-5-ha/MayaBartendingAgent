@@ -7,11 +7,8 @@
 - [requirements.txt](file://requirements.txt)
 - [notebooks/gradio_ui_testing.ipynb](file://notebooks/gradio_ui_testing.ipynb)
 - [notebooks/mvp_notebook_kaggle.ipynb](file://notebooks/mvp_notebook_kaggle.ipynb)
-- [notebooks/mvp_notebook_kaggle_compatible.ipynb](file://notebooks/mvp_notebook_kaggle_compatible.ipynb)
-- [notebooks/mvp_notebook_kaggle_compliance.ipynb](file://notebooks/mvp_notebook_kaggle_compliance.ipynb)
-- [notebooks/mvp_notebook_kaggle_merged.ipynb](file://notebooks/mvp_notebook_kaggle_merged.ipynb)
 - [notebooks/submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb)
-- [kaggle_test.py](file://kaggle_test.py)
+- [README.md](file://README.md)
 </cite>
 
 ## Table of Contents

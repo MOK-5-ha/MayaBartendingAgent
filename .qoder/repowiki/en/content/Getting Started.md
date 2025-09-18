@@ -6,6 +6,7 @@
 - [bartending_agent.py](file://bartending_agent.py)
 - [requirements.txt](file://requirements.txt)
 - [README.md](file://README.md)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb) - *Updated in recent commit*
 </cite>
 
 ## Table of Contents
@@ -23,7 +24,7 @@
 
 Before setting up the Maya Bartending Agent, ensure your system meets the following requirements:
 
-- **Python 3.9 or higher**: The application is built using Python and requires a compatible version. Verify your installation with:
+- **Python 3.8 or higher**: The application is built using Python and requires a compatible version. Verify your installation with:
   ```bash
   python --version
   ```
@@ -32,6 +33,7 @@ Before setting up the Maya Bartending Agent, ensure your system meets the follow
 
 **Section sources**
 - [requirements.txt](file://requirements.txt#L1-L9)
+- [README.md](file://README.md#L1-L5)
 
 ## Cloning the Repository
 
@@ -43,6 +45,9 @@ cd MayaBartendingAgent
 ```
 
 This creates a local copy of the project, including all source files and configuration.
+
+**Section sources**
+- [README.md](file://README.md#L6-L18)
 
 ## Setting Up the Environment
 

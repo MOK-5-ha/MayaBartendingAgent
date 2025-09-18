@@ -4,7 +4,18 @@
 **Referenced Files in This Document**   
 - [main.py](file://main.py)
 - [bartending_agent.py](file://bartending_agent.py)
+- [README.md](file://README.md) - *Updated in recent commit*
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb) - *Updated in recent commit*
 </cite>
+
+## Update Summary
+**Changes Made**   
+- Updated documentation to reflect the complete overhaul of the README with detailed project description and architecture diagram
+- Added new section on System Architecture Overview based on updated README content
+- Enhanced description of core components to align with new implementation details
+- Updated dependency analysis to reflect actual implementation in submission notebook
+- Added new section on AI Capabilities Demonstrated based on README updates
+- Revised project structure to match actual implementation
 
 ## Table of Contents
 1. [Core Components](#core-components)
@@ -14,6 +25,7 @@
 5. [State Management Strategy](#state-management-strategy)
 6. [Error Handling and Resilience](#error-handling-and-resilience)
 7. [Dependency Analysis](#dependency-analysis)
+8. [AI Capabilities Demonstrated](#ai-capabilities-demonstrated)
 
 ## Core Components
 
@@ -270,3 +282,45 @@ style G fill:#00BCD4,stroke:#0097A7
 **Diagram sources**
 - [main.py](file://main.py#L1-L10)
 - [bartending_agent.py](file://bartending_agent.py#L1-L50)
+
+## AI Capabilities Demonstrated
+
+The Maya Bartending Agent demonstrates several advanced AI capabilities as documented in the updated README:
+
+**Function Calling**
+- Utilizes LangChain and Gemini API function calling for order management
+- Integrates tools for menu retrieval, order tracking, and billing
+
+**Agent Architecture**
+- Implements an agentic workflow with conversation state management
+- Handles multi-turn interactions with context preservation
+
+**Retrieval Augmented Generation (RAG)**
+- Employs FAISS vector database for conversational context
+- Uses semantic search for relevant response augmentation
+- Integrates menu knowledge for accurate order processing
+
+**Vector Search/Database**
+- Implements FAISS for storing and retrieving conversational content
+- Uses embedding-based similarity search for contextual responses
+
+**Audio Understanding & Generation**
+- Implements Text-to-Speech via Cartesia API
+- Features high-quality voice synthesis with custom voice selection
+- Integrates audio response with web interface
+
+**Long Context Window**
+- Manages extended conversation history
+- Provides context-aware responses across multiple interaction turns
+
+**Embeddings**
+- Uses Google's text-embedding-004 model for vectorizing content
+- Applies semantic matching for RAG pipeline
+
+**Structured Output/JSON Mode**
+- Generates consistent order format
+- Produces structured billing and recommendation responses
+
+**Section sources**
+- [README.md](file://README.md) - *Updated in recent commit*
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb) - *Updated in recent commit*

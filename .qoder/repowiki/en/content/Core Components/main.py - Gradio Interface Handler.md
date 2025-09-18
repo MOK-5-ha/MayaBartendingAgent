@@ -4,7 +4,17 @@
 **Referenced Files in This Document**   
 - [main.py](file://main.py#L1-L142)
 - [bartending_agent.py](file://bartending_agent.py#L1-L374)
+- [README.md](file://README.md#L1-L308)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
 </cite>
+
+## Update Summary
+- Updated documentation to reflect project's actual implementation in Jupyter notebooks rather than standalone Python modules
+- Corrected architectural understanding: all functionality is contained within `submission_notebook.ipynb`, not distributed across multiple Python files
+- Removed references to non-existent `main.py` and `bartending_agent.py` files
+- Updated architecture overview to reflect notebook-based implementation
+- Added documentation for RAG implementation, tool functions, and conversation state management as implemented in the notebook
+- Removed outdated Gradio Blocks configuration details that do not match current implementation
 
 ## Table of Contents
 1. [Introduction](#introduction)
@@ -18,235 +28,214 @@
 9. [Conclusion](#conclusion)
 
 ## Introduction
-This document provides a comprehensive analysis of the `main.py` module in the MayaBartendingAgent project. The module serves as the controller and view layer, responsible for initializing the Gradio web interface, managing user interactions, and orchestrating backend logic from `bartending_agent.py`. It defines the UI components such as the chat interface, text input, audio output, and clear button, and sets up event callbacks for user submissions and session resets. The analysis includes the `handle_gradio_input()` function’s signature, parameters, and its role in integrating with backend services. Special attention is given to UI logic separation, state management, and performance optimization.
+This document provides an updated analysis of the Maya Bartending Agent project based on the actual code implementation. Contrary to the previous documentation, the application is implemented entirely within Jupyter notebooks, with the primary functionality contained in `submission_notebook.ipynb`. The project serves as a capstone submission for the Gen AI Intensive Course 2025Q1, demonstrating advanced conversational AI capabilities through order taking, personalized recommendations, and philosophical customer interactions. The agent operates as Maya, a bartender at "MOK-5ha" (Moksha), a philosophically-themed bar where liberation meets libation.
 
 ## Project Structure
-The project follows a modular structure with distinct components for UI, business logic, configuration, and testing. The core application files are located at the root, while notebooks are stored in a dedicated directory for experimentation and development.
+The project follows a notebook-centric structure with all core functionality contained within Jupyter notebooks. The implementation is self-contained within `submission_notebook.ipynb`, which includes setup, API configuration, core agent logic, function tools, RAG pipeline, text-to-speech integration, and Gradio interface.
 
 ```mermaid
 graph TB
 subgraph "Root"
-main[main.py]
-agent[bartending_agent.py]
-kaggle[kaggle_test.py]
-requirements[requirements.txt]
 README[README.md]
 end
 subgraph "Notebooks"
-notebook1[gradio_ui_testing.ipynb]
-notebook2[mvp_notebook_kaggle.ipynb]
-notebook3[submission_notebook.ipynb]
+submission[submission_notebook.ipynb]
+mvp[mvp_notebook_kaggle.ipynb]
+gradio[gradio_ui_testing.ipynb]
+rag[rag-bartender-bot.ipynb]
+agent[agent-building-bartending-bot.ipynb]
 end
-main --> agent : "Uses"
-main --> kaggle : "Related"
-agent --> requirements : "Requires"
-README --> main : "Documents"
+submission --> README : "Documents"
+submission --> gradio : "Evolved from"
+submission --> mvp : "Evolved from"
+submission --> rag : "Incorporates"
+submission --> agent : "Incorporates"
 ```
 
 **Diagram sources**
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
-- [requirements.txt](file://requirements.txt#L1-L9)
+- [README.md](file://README.md#L1-L308)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
 
 **Section sources**
-- [main.py](file://main.py#L1-L142)
-- [README.md](file://README.md#L1-L35)
+- [README.md](file://README.md#L1-L308)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
 
 ## Core Components
-The `main.py` file is the primary entry point for the Gradio-based web application. It initializes the UI, manages session state, and connects user inputs to backend processing logic. Key components include:
-- **Gradio Interface**: Built using `gr.Blocks` for flexible layout control.
-- **State Management**: Uses `gr.State` to maintain chat history and order state across interactions.
-- **Event Callbacks**: Handles user input submission and conversation clearing.
-- **Audio Integration**: Integrates text-to-speech (TTS) via Cartesia for voice responses.
+The `submission_notebook.ipynb` file is the complete implementation of the Maya Bartending Agent, serving as both the controller and view layer. Key components include:
+- **Gradio Interface**: Web-based user interaction layer for conversational AI
+- **RAG Implementation**: Retrieval Augmented Generation using FAISS vector database for contextual responses
+- **Function Tools**: Specialized functions for menu retrieval, order management, recommendations, and billing
+- **State Management**: Conversation state tracking across multiple interaction turns
+- **Text-to-Speech**: Audio response generation via Cartesia API
+- **Gemini LLM Integration**: Core language model processing using Google's Gemini 2.5 Flash Preview
 
-The `handle_gradio_input()` function orchestrates the flow by calling `process_order()` from `bartending_agent.py`, generating a textual response, and then synthesizing it into audio using `get_voice_audio()`.
+The notebook architecture consolidates all functionality into a single, self-contained implementation that can run in both local and Kaggle environments.
 
 **Section sources**
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
+- [README.md](file://README.md#L1-L308)
 
 ## Architecture Overview
-The application follows a clean separation between UI (view) and business logic (model/controller). The Gradio interface in `main.py` acts as the view, while `bartending_agent.py` contains the core logic for processing orders, managing state, and interacting with external APIs (Gemini LLM and Cartesia TTS).
+The application follows a notebook-based architecture where all components are implemented within a single Jupyter notebook. The Gradio interface serves as the view, while the various functions and state management components provide the controller and model logic.
 
 ```mermaid
 graph LR
 User[User] --> Gradio[Gradio UI]
-Gradio --> |User Input| Main[main.py]
-Main --> |Calls| Agent[bartending_agent.py]
-Agent --> |Gemini API| LLM[(Gemini LLM)]
-Agent --> |Cartesia API| TTS[(Cartesia TTS)]
-TTS --> |Audio Bytes| Main
-Main --> |Chat History & Audio| Gradio
+Gradio --> |User Input| Notebook[submission_notebook.ipynb]
+Notebook --> |Calls| Gemini[Gemini LLM]
+Notebook --> |Calls| Cartesia[Cartesia TTS]
+Notebook --> |Uses| FAISS[FAISS Vector Store]
+Notebook --> |Uses| Tools[Function Tools]
+Gemini --> |Generates| Response[Response Text]
+Cartesia --> |Generates| Audio[Audio Bytes]
+Tools --> |Provides| Menu[Menu Data]
+Tools --> |Manages| Order[Order State]
+FAISS --> |Retrieves| Context[Conversational Context]
+Response --> Notebook
+Audio --> Notebook
+Context --> Notebook
+Notebook --> |Chat History & Audio| Gradio
 Gradio --> |Display| User
-style Main fill:#f9f,stroke:#333
-style Agent fill:#bbf,stroke:#333
+style Notebook fill:#f9f,stroke:#333
 ```
 
 **Diagram sources**
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
+- [README.md](file://README.md#L1-L308)
 
 ## Detailed Component Analysis
 
 ### Gradio UI and State Management
-The Gradio interface is defined using `gr.Blocks`, allowing for a structured layout with rows and columns. The UI includes:
+The Gradio interface is implemented within the notebook, providing a web-based UI for user interaction. The interface includes:
 - A chatbot component for message history
 - A text input box for user messages
 - An audio output component for voice responses
-- A clear button to reset the session
+- Session state management for conversation continuity
 
-Session state is managed using `gr.State` variables (`history_state`, `order_state`) which persist across interactions without relying on global variables.
-
-```python
-history_state = gr.State([])
-order_state = gr.State([])
-```
-
-These states are passed as inputs to event handlers and updated via return values, ensuring functional purity and immutability.
-
-#### Event Handling Flow
-```mermaid
-sequenceDiagram
-participant User
-participant Gradio
-participant Main as main.py
-participant Agent as bartending_agent.py
-User->>Gradio : Types message and clicks Send
-Gradio->>Main : msg_input.submit()
-Main->>Agent : process_order(user_input, history, order)
-Agent->>LLM : Generate response via Gemini
-LLM-->>Agent : Response text
-Agent->>Agent : Update history and order
-Agent-->>Main : (response, updated_history, updated_order)
-Main->>Agent : get_voice_audio(response)
-Agent->>TTS : Synthesize speech
-TTS-->>Agent : Audio bytes
-Agent-->>Main : Audio data
-Main-->>Gradio : Return (empty_input, chatbot, history, order, audio)
-Gradio->>User : Update UI components
-```
-
-**Diagram sources**
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
+The implementation uses Gradio's capabilities to create a two-column layout with Maya's avatar, though the specific configuration details are contained within the notebook rather than a separate `main.py` file.
 
 **Section sources**
-- [main.py](file://main.py#L1-L142)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
 
-### handle_gradio_input Function Analysis
-The `handle_gradio_input()` function is the central callback that processes user input and updates the UI.
+### process_order Function Analysis
+The `process_order` function is the central orchestration component that processes user input and manages the conversation flow.
 
 **Function Signature**
 ```python
-def handle_gradio_input(
-    user_input: str,
-    session_history_state: List[Dict[str, str]],
-    session_order_state: List[Dict[str, float]]
+def process_order(
+    user_input_text: str,
+    current_session_history: List[Dict[str, str]],
+    current_session_order: List[Dict[str, float]]
 ) -> Tuple[str, List[Dict[str, str]], List[Dict[str, str]], List[Dict[str, float]], Any]
 ```
 
 **Parameters**
-- `user_input`: The text entered by the user
-- `session_history_state`: List of message dictionaries with role and content
-- `session_order_state`: List of ordered drink items with name and price
+- `user_input_text`: The text entered by the user
+- `current_session_history`: List of message dictionaries with role and content
+- `current_session_order`: List of ordered drink items with name and price
 
 **Return Values**
-- Empty string to clear input box
-- Updated chatbot display
+- Response text to display
+- Updated chat history for display
 - Updated history state
 - Updated order state
 - Audio data (WAV bytes or None)
 
-The function calls `process_order()` to generate a response and update state, then calls `get_voice_audio()` to synthesize the response into speech. If no response is generated, TTS is skipped.
+The function implements a sophisticated conversation management system that:
+1. Detects intent for orders, bills, payments, and tips
+2. Manages conversation phases (greeting, order taking, small talk, reorder prompting)
+3. Integrates with the RAG pipeline for enhanced responses
+4. Handles tool calls for order management and recommendations
+5. Maintains conversation state across multiple turns
 
 **Section sources**
-- [main.py](file://main.py#L45-L85)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
 
-### State Immutability and Functional Purity
-The application adheres to functional programming principles by avoiding mutable global state. Instead, state is passed as arguments and new state is returned. This ensures predictable behavior and simplifies debugging.
+### State Management and Conversation Flow
+The application implements a comprehensive state management system to maintain conversation context and order information across interactions.
 
-In `bartending_agent.py`, `process_order()` takes current state as input and returns updated state, never modifying the input directly. This pattern prevents side effects and makes the function easier to test.
+**Global State Variables**
+- `conversation_state`: Tracks turn count, current phase, last order time, and small talk count
+- `order_history`: Maintains items ordered, total cost, payment status, and tip information
+- `current_process_order_state`: Temporary state for the current order processing call
 
-```python
-updated_history = current_session_history[:]
-updated_order = current_session_order[:]
-```
+**Conversation Phases**
+- **greeting**: Initial greeting when customer arrives
+- **order_taking**: Actively taking an order
+- **small_talk**: Casual conversation between orders
+- **reorder_prompt**: Asking if the customer wants to order anything else
 
-Local copies are created using slicing to prevent mutation of input lists.
+The `determine_next_phase` function manages transitions between these phases based on user interactions and the small talk counter, creating a natural conversation rhythm.
 
 **Section sources**
-- [bartending_agent.py](file://bartending_agent.py#L200-L300)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
 
 ## Dependency Analysis
-The application relies on several external libraries, as defined in `requirements.txt`.
+The application relies on several external libraries, as defined in the notebook's setup section.
 
 ```mermaid
 graph TD
-main[main.py] --> gradio[gradio]
-main --> logging[logging]
-main --> agent[bartending_agent.py]
-agent --> google_genai[google.generativeai]
-agent --> cartesia[cartesia]
-agent --> tenacity[tenacity]
-agent --> dotenv[python-dotenv]
-agent --> logging
-gradio --> fastapi
-google_genai --> google_api_core
-cartesia --> requests
-style main fill:#f9f,stroke:#333
-style agent fill:#bbf,stroke:#333
+notebook[submission_notebook.ipynb] --> gradio[gradio]
+notebook --> google_genai[google.generativeai]
+notebook --> cartesia[cartesia]
+notebook --> faiss[faiss-cpu]
+notebook --> langchain[langchain-google-genai]
+notebook --> langchain_core[langchain-core]
+notebook --> tenacity[tenacity]
+notebook --> kaggle_secrets[kaggle_secrets]
+style notebook fill:#f9f,stroke:#333
 ```
 
 **Diagram sources**
-- [requirements.txt](file://requirements.txt#L1-L9)
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
 
 **Section sources**
-- [requirements.txt](file://requirements.txt#L1-L9)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
 
 ## Performance Considerations
 To ensure a responsive user experience, several performance best practices are applied:
 
-- **Minimize Data Transfer**: Only necessary state (history, order) is passed between frontend and backend.
-- **Efficient State Updates**: Gradio components are updated selectively; only changed components are refreshed.
-- **Caching and Retries**: The `tenacity` library is used to retry failed API calls with exponential backoff, improving reliability without blocking the UI.
-- **Asynchronous TTS**: Although TTS is currently synchronous, the use of generators in Cartesia allows for potential streaming in the future.
-- **Prompt Truncation**: Only the last 10 conversation turns are included in the prompt to Gemini, reducing token usage and latency.
+- **Intent Detection**: Uses pattern matching to handle common requests (order status, bill, payment) without full LLM processing
+- **Conversation State Management**: Limits conversation history to the last 10 turns to manage context window size
+- **Error Handling**: Implements retry mechanisms with exponential backoff for API calls
+- **Efficient Processing**: Bypasses LLM processing for certain intents to reduce latency
+- **Local Caching**: Uses FAISS for fast retrieval of conversational context
 
-Avoiding UI freezing is achieved by ensuring that long-running operations (LLM inference, TTS) are handled efficiently and that the Gradio interface is launched with `debug=True` for development, enabling hot reload.
+The notebook-based implementation also benefits from Kaggle's optimized environment for machine learning workloads.
 
 **Section sources**
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
 
 ## Troubleshooting Guide
 Common issues and their solutions:
 
-**UI Freezing**
-- **Cause**: Long-running TTS or LLM calls blocking the event loop.
-- **Solution**: Ensure network connectivity and API key validity. Consider implementing asynchronous processing if freezing persists.
+**API Key Issues**
+- **Cause**: Missing or invalid API keys for Gemini or Cartesia
+- **Solution**: Ensure API keys are properly configured in Kaggle Secrets or environment variables
 
-**State Persistence Issues**
-- **Cause**: Incorrect handling of `gr.State` or mutation of input state.
-- **Solution**: Always return new state objects; never modify input lists in place.
+**RAG Pipeline Failures**
+- **Cause**: Embedding generation or retrieval failures
+- **Solution**: Check Gemini API connectivity and verify embedding model availability
 
-**Audio Not Playing**
-- **Cause**: TTS failure or invalid audio data.
-- **Solution**: Check Cartesia API key and voice ID. Verify that `get_voice_audio()` returns valid WAV bytes.
+**Tool Function Errors**
+- **Cause**: Malformed tool calls or parameter issues
+- **Solution**: Verify tool function signatures and parameter types
 
-**Empty or Generic Responses**
-- **Cause**: Gemini API safety filters or prompt formatting issues.
-- **Solution**: Review prompt construction in `process_order()`. Check logs for block reasons.
+**Conversation Flow Issues**
+- **Cause**: Incorrect phase transitions or state management
+- **Solution**: Check conversation_state variables and phase transition logic
+
+**Audio Generation Problems**
+- **Cause**: Cartesia API failures or invalid voice IDs
+- **Solution**: Verify Cartesia API key and ensure valid voice ID is configured
 
 **Debugging Tips**
-- Enable debug logging in `main.py` and `bartending_agent.py`.
-- Use `logger.debug()` to trace state changes.
-- Test individual functions (e.g., `get_voice_audio()`) in isolation.
+- Enable debug logging to trace function calls and state changes
+- Test individual components (RAG, tools, TTS) in isolation
+- Use print statements to inspect variable values at key points
 
 **Section sources**
-- [main.py](file://main.py#L1-L142)
-- [bartending_agent.py](file://bartending_agent.py#L1-L374)
+- [submission_notebook.ipynb](file://notebooks/submission_notebook.ipynb#L1-L2887)
 
 ## Conclusion
-The `main.py` module effectively serves as the controller and view layer for the bartending agent application. It leverages Gradio to create an intuitive web interface while maintaining a clean separation from business logic in `bartending_agent.py`. The use of session state, functional purity, and robust error handling ensures a reliable and maintainable architecture. Performance is optimized through efficient state management and API call retries. This design supports easy debugging and future enhancements, such as adding asynchronous processing or expanding the menu system.
+The Maya Bartending Agent project is implemented as a comprehensive solution within a single Jupyter notebook (`submission_notebook.ipynb`), contrary to the previously documented multi-file structure. The application demonstrates advanced AI capabilities including function calling, agent architecture, RAG implementation, audio generation, and long-context conversation management. The notebook contains all necessary components: setup, API configuration, core agent logic, function tools, RAG pipeline, text-to-speech integration, and Gradio interface. This self-contained approach enables easy deployment on both local systems and Kaggle, making it an effective demonstration of agentic AI for bartending services with philosophical themes.
