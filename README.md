@@ -115,7 +115,7 @@ graph TB
 
 1. **Clone the repository**:
    ```bash
-   git clone <repository-url>
+   git clone https://github.com/MOK-5-ha/MayaBartendingAgent.git
    cd MayaBartendingAgent
    ```
 
